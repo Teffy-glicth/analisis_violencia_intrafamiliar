@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Agregado por el equipo
+.vscode/
+.DS_Store
+Thumbs.db
+*.xlsx
+*.xls
+data/violencia_intrafamiliar_completo.csv
