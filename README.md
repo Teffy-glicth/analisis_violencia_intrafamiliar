@@ -34,7 +34,28 @@ Aplicación web desarrollada con **Python, Flask y Bootstrap** que presenta el a
 
 ## Ejecución local
 
-_(La completa el integrante 2.)_
+Se requiere Python 3.10 o posterior.
+
+1. Clona el repositorio y entra en su carpeta.
+2. Crea y activa un entorno virtual:
+
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+3. Instala las dependencias y ejecuta Flask:
+
+   ```powershell
+   pip install -r requirements.txt
+   python app.py
+   ```
+
+4. Abre <http://127.0.0.1:5000> en el navegador.
+
+La aplicación incluye una página de inicio y rutas iniciales para las cuatro
+dimensiones. Las dimensiones muestran contenido «en construcción» hasta que
+cada integrante incorpore su análisis. Bootstrap se carga desde su CDN.
 
 ## Aplicación publicada
 
