@@ -2,11 +2,204 @@
 
 {% block title %}Dimensión relacional y multivariada | Violencia intrafamiliar{% endblock %}
 
+{% block head %}
+  <style>
+    .mv-card {
+      height: 100%;
+      padding: 1.5rem;
+      border: 1px solid #e0e9e7;
+      border-radius: 1rem;
+      background: var(--surface);
+      box-shadow: 0 12px 32px rgb(24 51 59 / 5%);
+    }
+
+    .mv-card h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .mv-knowledge dt {
+      color: var(--brand);
+    }
+
+    .mv-knowledge dd {
+      margin-bottom: 0.75rem;
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
   <section class="construction-panel">
     <p class="eyebrow">Análisis de datos</p>
     <h1>Dimensión relacional y multivariada</h1>
-    <p class="lead">Esta dimensión está en construcción.</p>
-    <p>Aquí se explorarán las relaciones entre las distintas variables del conjunto de datos.</p>
+    <p class="lead">
+      ¿Qué diferencias o relaciones evidentes pueden identificarse al analizar
+      conjuntamente tres o más variables?
+    </p>
+    <p class="text-secondary mb-0">
+      Periodo: 01/01/2025 – 31/07/2026 · 91.955 registros · 233.411 víctimas
+      (suma de CANTIDAD) · 33 departamentos · 1.012 municipios.
+    </p>
+  </section>
+
+  <section class="mb-5" aria-labelledby="preguntas-heading">
+    <h2 id="preguntas-heading" class="section-heading">Preguntas de análisis</h2>
+    <div class="table-responsive mv-card">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Pregunta</th>
+            <th scope="col">Variables cruzadas</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">P1</th>
+            <td>¿Qué combinaciones de género, grupo etario y arma o medio concentran más víctimas, y cambia la relación entre género y edad?</td>
+            <td>GENERO × GRUPO ETARIO × ARMAS MEDIOS × CANTIDAD</td>
+          </tr>
+          <tr>
+            <th scope="row">P2</th>
+            <td>¿El uso de armas o medios (contundentes, arma blanca, arma de fuego) se comporta igual en todos los departamentos?</td>
+            <td>DEPARTAMENTO × ARMAS MEDIOS × GENERO × CANTIDAD</td>
+          </tr>
+          <tr>
+            <th scope="row">P3</th>
+            <td>¿Hay territorios o periodos con un comportamiento particular o inusual en el registro?</td>
+            <td>DEPARTAMENTO × GRUPO ETARIO × FECHA HECHO × CANTIDAD</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="variables-heading">
+    <h2 id="variables-heading" class="section-heading">Variables utilizadas</h2>
+    <div class="table-responsive mv-card">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">Variable</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Uso en la dimensión</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>DEPARTAMENTO</td><td>Categórica territorial</td><td>Comparar grupos territoriales; filtro</td></tr>
+          <tr><td>ARMAS MEDIOS</td><td>Categórica</td><td>Tipo de agresión; se agrupa en «sin arma» y «con arma o medio»</td></tr>
+          <tr><td>FECHA HECHO</td><td>Temporal</td><td>Año y mes; filtro de periodo y detección de meses atípicos</td></tr>
+          <tr><td>GENERO</td><td>Categórica</td><td>Diferencias según el género de la víctima</td></tr>
+          <tr><td>GRUPO ETARIO</td><td>Categórica</td><td>Menores, adolescentes y adultos</td></tr>
+          <tr><td>CANTIDAD</td><td>Numérica</td><td>Número de víctimas; siempre se suma, nunca se cuentan filas</td></tr>
+        </tbody>
+      </table>
+      <p class="text-secondary small mt-3 mb-0">
+        Variables derivadas: AÑO, MES y CON ARMA (ARMAS MEDIOS distinto de «SIN EMPLEO DE ARMAS»).
+        Los vacíos de GENERO (1.899 víctimas), GRUPO ETARIO (1.012) y MUNICIPIO se muestran como «No reporta».
+      </p>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="conocimientos-heading">
+    <h2 id="conocimientos-heading" class="section-heading">Conocimientos evidentes</h2>
+    <div class="row g-4">
+      <div class="col-12 col-xl-4">
+        <article class="mv-card">
+          <h3>1. La brecha de género depende de la edad</h3>
+          <dl class="mv-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿La proporción de mujeres víctimas es igual en todos los grupos etarios y medios?</dd>
+            <dt>Variables</dt>
+            <dd>GENERO, GRUPO ETARIO, ARMAS MEDIOS, CANTIDAD.</dd>
+            <dt>Procedimiento</dt>
+            <dd>Suma de CANTIDAD por las tres variables y porcentaje de cada género dentro de cada grupo etario.</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              Mujeres víctimas: adultos 75,4 %, adolescentes 67,7 %, menores 55,3 % (hombres 44,1 %).
+              La combinación «femenino · adultos · sin armas» reúne el 59,6 % de las víctimas y las tres
+              primeras combinaciones suman el 87,7 %.
+            </dd>
+            <dt>Hallazgo</dt>
+            <dd>En adultos hay 3 mujeres víctimas por cada hombre; en menores la relación es casi 1 a 1. En menores también baja el uso de contundentes (5,8 % frente a 13,1 % en adultos).</dd>
+            <dt>Interpretación</dt>
+            <dd>La violencia contra adultos tiene un fuerte sesgo de género, mientras que contra niños y niñas afecta a ambos sexos de forma parecida.</dd>
+            <dt>Utilidad</dt>
+            <dd>Justifica rutas diferenciadas: enfoque de género para mujeres adultas y protección infantil para ambos sexos.</dd>
+            <dt>Limitación</dt>
+            <dd>No se conoce el parentesco entre agresor y víctima; no puede afirmarse que se trate de violencia de pareja.</dd>
+          </dl>
+        </article>
+      </div>
+
+      <div class="col-12 col-xl-4">
+        <article class="mv-card">
+          <h3>2. El registro de armas o medios varía de forma extrema por departamento</h3>
+          <dl class="mv-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿El porcentaje de víctimas agredidas con arma o medio es similar entre departamentos?</dd>
+            <dt>Variables</dt>
+            <dd>DEPARTAMENTO, ARMAS MEDIOS, GENERO, CANTIDAD.</dd>
+            <dt>Procedimiento</dt>
+            <dd>Porcentaje de víctimas por arma o medio y porcentaje de mujeres en cada departamento.</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              Contundentes: Quindío 80,8 %, Caldas 46,3 %, Santander 35,8 %, Cauca 33,5 %, Meta 32,8 %;
+              frente a Bogotá 1,6 %, Caquetá 1,1 %, Putumayo 0,9 %, San Andrés y Vaupés 0 %
+              (promedio nacional 12,6 %). El porcentaje de mujeres se mantiene entre 67 % y 85 %.
+            </dd>
+            <dt>Hallazgo</dt>
+            <dd>El género se comporta parecido en todo el país, pero el medio registrado va de 0 % a 81 %. Quindío invierte el patrón nacional, donde el 86,4 % de las víctimas no reporta armas.</dd>
+            <dt>Interpretación</dt>
+            <dd>Diferencias tan grandes entre departamentos vecinos (Quindío 80,8 % y Risaralda 31,7 %) sugieren que también influye la forma en que cada seccional tipifica el medio.</dd>
+            <dt>Utilidad</dt>
+            <dd>Priorizar Quindío, Caldas, Santander, Cauca y Meta en prevención de lesiones y estandarizar el diligenciamiento de ARMAS MEDIOS.</dd>
+            <dt>Limitación</dt>
+            <dd>No permite afirmar que la violencia sea más grave en esos departamentos; puede ser un efecto del registro.</dd>
+          </dl>
+        </article>
+      </div>
+
+      <div class="col-12 col-xl-4">
+        <article class="mv-card">
+          <h3>3. Bogotá registra de forma agregada y concentra las víctimas menores de edad</h3>
+          <dl class="mv-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿Hay territorios cuyo registro se comporta distinto al resto?</dd>
+            <dt>Variables</dt>
+            <dd>DEPARTAMENTO, GRUPO ETARIO, FECHA HECHO, CANTIDAD y número de registros.</dd>
+            <dt>Procedimiento</dt>
+            <dd>Comparación entre número de registros, suma de víctimas y víctimas por registro; porcentaje de menores y adolescentes por departamento.</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              Bogotá tiene 4.608 registros (5,0 %) pero 82.129 víctimas (35,2 %): 17,8 víctimas por registro
+              frente a unas 2,2 en Antioquia o Valle. 567 de los 568 registros con 50 o más víctimas son de
+              Bogotá (máximo 198). Menores y adolescentes: 12,8 % en Bogotá y 4,9 % en el resto; Bogotá reúne
+              el 58,5 % de estas víctimas del país.
+            </dd>
+            <dt>Hallazgo</dt>
+            <dd>Bogotá consolida varias víctimas en una sola fila y su proporción de menores es más del doble que la del resto del país.</dd>
+            <dt>Interpretación</dt>
+            <dd>Contar filas subestimaría a Bogotá unas 7 veces. La mayor proporción de menores puede reflejar una mayor capacidad de denuncia (colegios, ICBF, comisarías).</dd>
+            <dt>Utilidad</dt>
+            <dd>Comparar territorios con tasas y no con conteos, y fortalecer la detección de violencia contra menores fuera de Bogotá, donde podría haber subregistro.</dd>
+            <dt>Limitación</dt>
+            <dd>El conjunto no incluye población por departamento, por lo que no se pueden calcular tasas.</dd>
+          </dl>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="inusuales-heading">
+    <h2 id="inusuales-heading" class="section-heading">Posibles casos inusuales</h2>
+    <div class="mv-card">
+      <ul class="mb-0">
+        <li><strong>Diciembre de 2025:</strong> 6.528 víctimas frente a 10.000–15.000 en los demás meses. La cifra cae día a día (394 el día 1 y 11 el día 31) en todos los departamentos, lo que apunta a una carga incompleta de datos más que a una disminución real.</li>
+        <li><strong>Quindío:</strong> 80,8 % de víctimas con contundentes, frente al 12,6 % nacional.</li>
+        <li><strong>Bogotá:</strong> registros de hasta 198 víctimas en una sola fila.</li>
+        <li><strong>Enero a julio, 2026 frente a 2025:</strong> aumento en todos los grupos (mujeres adultas +17 %, menores masculinos +23 %).</li>
+      </ul>
+    </div>
   </section>
 {% endblock %}
