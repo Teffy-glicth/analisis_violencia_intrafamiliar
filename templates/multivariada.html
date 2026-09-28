@@ -3,6 +3,8 @@
 {% block title %}Dimensión relacional y multivariada | Violencia intrafamiliar{% endblock %}
 
 {% block head %}
+  {# Estilos temporales de la dimensión multivariada: quitar este bloque cuando el
+     responsable agregue los generales. #}
   <style>
     .mv-card {
       height: 100%;
@@ -25,8 +27,59 @@
     .mv-knowledge dd {
       margin-bottom: 0.75rem;
     }
+
+    .mv-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    .mv-filters .form-select {
+      min-width: 14rem;
+    }
+
+    .mv-kpi-label {
+      margin-bottom: 0.25rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .mv-kpi-value {
+      margin-bottom: 0.25rem;
+      font-size: 2.25rem;
+      font-weight: 750;
+      line-height: 1.1;
+    }
+
+    .mv-kpi-note {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .mv-chart {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 22rem;
+      border: 1px dashed #c9d3d1;
+      border-radius: 0.75rem;
+      color: var(--muted);
+    }
+
+    .mv-interpretation {
+      margin-top: 1rem;
+      margin-bottom: 0;
+      padding-top: 1rem;
+      border-top: 1px solid #e0e9e7;
+    }
   </style>
 {% endblock %}
+
+{# Formato colombiano: 91.955 y 73,9 %. Los datos llegan desde app.py (resumen e indicadores). #}
+{% macro entero(valor) %}{{ "{:,}".format(valor) | replace(",", ".") }}{% endmacro %}
+{% macro pct(valor) %}{{ "%.1f" | format(valor) | replace(".", ",") }} %{% endmacro %}
 
 {% block content %}
   <section class="construction-panel">
@@ -36,10 +89,13 @@
       ¿Qué diferencias o relaciones evidentes pueden identificarse al analizar
       conjuntamente tres o más variables?
     </p>
-    <p class="text-secondary mb-0">
-      Periodo: 01/01/2025 – 31/07/2026 · 91.955 registros · 233.411 víctimas
-      (suma de CANTIDAD) · 33 departamentos · 1.012 municipios.
-    </p>
+    {% if resumen is defined %}
+      <p class="text-secondary mb-0">
+        Periodo: {{ resumen.fecha_inicial.strftime("%d/%m/%Y") }} – {{ resumen.fecha_final.strftime("%d/%m/%Y") }}
+        · {{ entero(resumen.registros) }} registros · {{ entero(resumen.victimas) }} víctimas
+        (suma de CANTIDAD) · {{ resumen.departamentos }} departamentos · {{ entero(resumen.municipios) }} municipios.
+      </p>
+    {% endif %}
   </section>
 
   <section class="mb-5" aria-labelledby="preguntas-heading">
@@ -96,15 +152,109 @@
       </table>
       <p class="text-secondary small mt-3 mb-0">
         Variables derivadas: AÑO, MES y CON ARMA (ARMAS MEDIOS distinto de «SIN EMPLEO DE ARMAS»).
-        Los vacíos de GENERO (1.899 víctimas), GRUPO ETARIO (1.012) y MUNICIPIO se muestran como «No reporta».
+        {% if resumen is defined %}
+          Los vacíos de GENERO ({{ entero(resumen.victimas_sin_genero) }} víctimas),
+          GRUPO ETARIO ({{ entero(resumen.victimas_sin_grupo_etario) }}) y MUNICIPIO
+          ({{ resumen.registros_sin_municipio }} registros) se muestran como «No reporta».
+        {% else %}
+          Los vacíos de GENERO, GRUPO ETARIO y MUNICIPIO se muestran como «No reporta».
+        {% endif %}
       </p>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="tablero-heading">
+    <h2 id="tablero-heading" class="section-heading">Tablero de control</h2>
+
+    <div class="mv-card mb-4">
+      <form class="mv-filters" aria-label="Filtros del tablero">
+        <div>
+          <label for="filtro-1" class="form-label fw-semibold">Filtro 1</label>
+          <select id="filtro-1" class="form-select">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label for="filtro-2" class="form-label fw-semibold">Filtro 2</label>
+          <select id="filtro-2" class="form-select">
+            <option value="">Todos</option>
+          </select>
+        </div>
+      </form>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="mv-card">
+          <p class="mv-kpi-label">Víctimas mujeres</p>
+          {% if indicadores is defined %}
+            <p id="kpi-mujeres" class="mv-kpi-value">{{ pct(indicadores.pct_mujeres) }}</p>
+            <p id="kpi-mujeres-nota" class="mv-kpi-note">
+              {{ entero(indicadores.mujeres) }} de {{ entero(indicadores.victimas) }} víctimas
+            </p>
+          {% else %}
+            <p id="kpi-mujeres" class="mv-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="mv-card">
+          <p class="mv-kpi-label">Víctimas con arma o medio</p>
+          {% if indicadores is defined %}
+            <p id="kpi-arma" class="mv-kpi-value">{{ pct(indicadores.pct_con_arma) }}</p>
+            <p id="kpi-arma-nota" class="mv-kpi-note">
+              {{ entero(indicadores.con_arma) }} víctimas con contundentes, arma blanca o arma de fuego
+            </p>
+          {% else %}
+            <p id="kpi-arma" class="mv-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="mv-card">
+          <p class="mv-kpi-label">Peso de la combinación principal</p>
+          {% if indicadores is defined %}
+            <p id="kpi-combinacion" class="mv-kpi-value">{{ pct(indicadores.pct_combinacion_principal) }}</p>
+            <p id="kpi-combinacion-nota" class="mv-kpi-note">
+              {{ indicadores.combinacion_principal | capitalize }}
+              ({{ entero(indicadores.victimas_combinacion_principal) }} víctimas)
+            </p>
+          {% else %}
+            <p id="kpi-combinacion" class="mv-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>Visualización 1</h3>
+          <div id="grafica-1" class="mv-chart">Gráfica 1</div>
+          <p class="mv-interpretation"><strong>Interpretación:</strong></p>
+        </article>
+      </div>
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>Visualización 2</h3>
+          <div id="grafica-2" class="mv-chart">Gráfica 2</div>
+          <p class="mv-interpretation"><strong>Interpretación:</strong></p>
+        </article>
+      </div>
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>Visualización 3</h3>
+          <div id="grafica-3" class="mv-chart">Gráfica 3</div>
+          <p class="mv-interpretation"><strong>Interpretación:</strong></p>
+        </article>
+      </div>
     </div>
   </section>
 
   <section class="mb-5" aria-labelledby="conocimientos-heading">
     <h2 id="conocimientos-heading" class="section-heading">Conocimientos evidentes</h2>
     <div class="row g-4">
-      <div class="col-12 col-xl-4">
+      <div class="col-12">
         <article class="mv-card">
           <h3>1. La brecha de género depende de la edad</h3>
           <dl class="mv-knowledge">
@@ -132,7 +282,7 @@
         </article>
       </div>
 
-      <div class="col-12 col-xl-4">
+      <div class="col-12">
         <article class="mv-card">
           <h3>2. El registro de armas o medios varía de forma extrema por departamento</h3>
           <dl class="mv-knowledge">
@@ -160,7 +310,7 @@
         </article>
       </div>
 
-      <div class="col-12 col-xl-4">
+      <div class="col-12">
         <article class="mv-card">
           <h3>3. Bogotá registra de forma agregada y concentra las víctimas menores de edad</h3>
           <dl class="mv-knowledge">
@@ -202,4 +352,17 @@
       </ul>
     </div>
   </section>
+
+  <div class="row g-4 mb-5">
+    <section class="col-12 col-lg-6" aria-labelledby="limitacion-heading">
+      <div class="mv-card">
+        <h2 id="limitacion-heading" class="section-heading">Limitación del análisis</h2>
+      </div>
+    </section>
+    <section class="col-12 col-lg-6" aria-labelledby="decision-heading">
+      <div class="mv-card">
+        <h2 id="decision-heading" class="section-heading">Decisión sustentada en los datos</h2>
+      </div>
+    </section>
+  </div>
 {% endblock %}
