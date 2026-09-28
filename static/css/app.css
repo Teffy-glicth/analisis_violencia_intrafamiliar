@@ -1,0 +1,219 @@
+:root {
+  color-scheme: light;
+  --ink: #00482B;
+  --muted: #5d7076;
+  --brand: #145b63;
+  --brand-dark: #00482B;
+  --surface: #ffffff;
+  --background: #f3f7f6;
+}
+
+body {
+  min-height: 100vh;
+  padding-top: 4.5rem;
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+  background: var(--background);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.site-navbar {
+  background: var(--brand-dark);
+  box-shadow: 0 2px 12px rgb(16 70 77 / 16%);
+}
+
+.site-navbar .navbar-collapse {
+  flex-basis: 100%;
+}
+
+.site-navbar .navbar-nav {
+  align-items: flex-start;
+}
+
+.navbar-brand {
+  letter-spacing: 0.01em;
+}
+
+.navbar .nav-link.active,
+.dropdown-item.active {
+  font-weight: 700;
+}
+
+.page-content {
+  flex: 1;
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.welcome-panel,
+.construction-panel {
+  margin-bottom: 2.5rem;
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  border: 1px solid #e0e9e7;
+  border-radius: 1rem;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgb(24 51 59 / 5%);
+}
+
+.welcome-panel {
+  text-align: left;
+}
+
+.welcome-panel h1,
+.construction-panel h1 {
+  max-width: 52rem;
+  margin-right: auto;
+  margin-bottom: 1rem;
+  margin-left: auto;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.welcome-panel h1 {
+  text-align: center;
+}
+
+.welcome-panel .lead,
+.construction-panel .lead {
+  max-width: 48rem;
+  color: var(--muted);
+}
+
+.eyebrow {
+  margin-bottom: 0.75rem;
+  color: var(--brand);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.section-heading {
+  margin-bottom: 1rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.dimension-orbit-section {
+  padding: 0.25rem 0 1rem;
+  text-align: center;
+}
+
+.orbit-instructions {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.dimension-orbit {
+  width: min(100%, 36rem);
+  margin: 1.25rem auto 0;
+  display: flex;
+  justify-content: center;
+}
+
+.orbit-map {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.orbit-sector {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: filter 160ms ease, transform 160ms ease;
+}
+
+.orbit-sector path {
+  stroke: var(--background);
+  stroke-linejoin: round;
+  stroke-width: 5;
+}
+
+.sector-population path {
+  fill: #79C000;
+}
+
+.sector-territory path {
+  fill: #00A99D;
+}
+
+.sector-time path {
+  fill: #75528c;
+}
+
+.sector-relational path {
+  fill: #F7931E;
+}
+
+.orbit-sector text {
+  fill: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+.orbit-sector:hover,
+.orbit-sector:focus {
+  filter: brightness(1.12) drop-shadow(0 5px 5px rgb(24 51 59 / 20%));
+  transform: scale(1.025);
+}
+
+.orbit-sector:focus {
+  outline: none;
+}
+
+.orbit-sector:focus path {
+  stroke: var(--ink);
+  stroke-width: 8;
+}
+
+.orbit-center {
+  fill: #ffffff;
+  stroke: #dce8e6;
+  stroke-width: 3;
+}
+
+.orbit-center-title,
+.orbit-center-subtitle {
+  text-anchor: middle;
+}
+
+.orbit-center-title {
+  fill: var(--brand-dark);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.orbit-center-subtitle {
+  fill: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .orbit-sector text {
+    font-size: 14px;
+  }
+
+  .sector-relational text {
+    font-size: 12px;
+  }
+
+  .orbit-center-title {
+    font-size: 13px;
+  }
+
+  .orbit-center-subtitle {
+    font-size: 12px;
+  }
+}
+
+.site-footer {
+  padding: 1.25rem 0;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.9rem;
+}

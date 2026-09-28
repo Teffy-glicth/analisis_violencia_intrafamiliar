@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio | Violencia intrafamiliar en Colombia{% endblock %}
+
+{% block content %}
+  <section class="welcome-panel">
+    <p class="eyebrow">Proyecto de análisis de datos</p>
+    <h1>Análisis de la violencia intrafamiliar en Colombia</h1>
+    <p class="lead">
+      Exploramos los registros reportados por la Policía Nacional para comprender
+      cómo se distribuyen y caracterizan los casos en el país.
+    </p>
+    <p>
+      El equipo está integrado por Esteffy Geraldine Bachiller Carrillo,
+      Juan Pablo Villarraga Espitia, Manuel Felipe Murcia Suárez y
+      Johan Orlando Martínez Suárez.
+    </p>
+    <p class="text-secondary">
+      Fuente: conjunto de datos «Reporte Delito Violencia Intrafamiliar Policía Nacional»,
+      publicado en el Portal Nacional de Datos Abiertos de Colombia.
+    </p>
+  </section>
+
+  <section class="dimension-orbit-section" aria-labelledby="dimensions-heading">
+    <h2 id="dimensions-heading" class="section-heading">Cuatro formas de comprender el fenómeno</h2>
+    <p class="orbit-instructions">Selecciona una dimensión para explorar los datos.</p>
+    <div class="dimension-orbit">
+      <svg
+        class="orbit-map"
+        viewBox="0 0 600 600"
+        role="group"
+        aria-labelledby="orbit-title orbit-description"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <title id="orbit-title">Círculo interactivo de dimensiones de análisis</title>
+        <desc id="orbit-description">Cuatro sectores alrededor del tema violencia intrafamiliar en Colombia enlazan con las dimensiones poblacional, territorial, temporal y relacional y multivariada.</desc>
+
+        <a class="orbit-sector sector-population" href="{{ url_for('poblacional') }}" aria-label="Abrir dimensión poblacional">
+          <path d="M300 40A260 260 0 0 0 40 300L172 300A128 128 0 0 1 300 172Z"/>
+          <text x="165" y="145">
+            <tspan x="165">Dimensión</tspan>
+            <tspan x="165" dy="20">poblacional</tspan>
+          </text>
+        </a>
+        <a class="orbit-sector sector-territory" href="{{ url_for('territorial') }}" aria-label="Abrir dimensión territorial">
+          <path d="M300 40A260 260 0 0 1 560 300L428 300A128 128 0 0 0 300 172Z"/>
+          <text x="435" y="145">
+            <tspan x="435">Dimensión</tspan>
+            <tspan x="435" dy="20">territorial</tspan>
+          </text>
+        </a>
+        <a class="orbit-sector sector-time" href="{{ url_for('temporal') }}" aria-label="Abrir dimensión temporal">
+          <path d="M560 300A260 260 0 0 1 300 560L300 428A128 128 0 0 0 428 300Z"/>
+          <text x="435" y="425">
+            <tspan x="435">Dimensión</tspan>
+            <tspan x="435" dy="20">temporal</tspan>
+          </text>
+        </a>
+        <a class="orbit-sector sector-relational" href="{{ url_for('multivariada') }}" aria-label="Abrir dimensión relacional y multivariada">
+          <path d="M300 560A260 260 0 0 1 40 300L172 300A128 128 0 0 0 300 428Z"/>
+          <text x="165" y="405">
+            <tspan x="165">Dimensión</tspan>
+            <tspan x="165" dy="19">relacional y</tspan>
+            <tspan x="165" dy="19">multivariada</tspan>
+          </text>
+        </a>
+
+        <circle class="orbit-center" cx="300" cy="300" r="120"/>
+        <text class="orbit-center-title" x="300" y="296">
+          <tspan x="300">DIMENSIONES</tspan>
+        </text>
+        <text class="orbit-center-subtitle" x="300" y="323">de análisis</text>
+      </svg>
+    </div>
+  </section>
+{% endblock %}
