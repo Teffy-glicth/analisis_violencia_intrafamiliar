@@ -6,9 +6,12 @@ dimensión. Ejecutar desde la raíz del repositorio:
     python dimensiones/multivariada.py
 """
 
+from pathlib import Path
+
 import pandas as pd
 
-RUTA = "data/violencia_intrafamiliar.csv"
+# Ruta absoluta para que funcione sin importar desde qué carpeta se ejecute Flask.
+RUTA = Path(__file__).resolve().parent.parent / "data" / "violencia_intrafamiliar.csv"
 SIN_ARMAS = "SIN EMPLEO DE ARMAS"
 ARMAS = ["CONTUNDENTES", "ARMA BLANCA / CORTOPUNZANTE", "ARMA DE FUEGO"]
 MENORES = ["MENORES", "ADOLESCENTES"]
@@ -179,6 +182,202 @@ def comparacion_interanual(df, hasta_mes=7):
     )
     tabla["VARIACION_%"] = (tabla[2026] - tabla[2025]) / tabla[2025] * 100
     return tabla
+
+
+# --- Tablero: filtros, datos de las gráficas e interpretaciones ---
+
+GRUPOS_TABLERO = ["ADULTOS", "ADOLESCENTES", "MENORES"]
+ARMAS_TABLERO = ARMAS + [SIN_ARMAS]
+MINIMO_CELDA = 30  # por debajo de este número de víctimas el porcentaje no es confiable
+ANIOS = [2025, 2026]
+
+
+def _pct(valor):
+    return f"{valor:.1f}".replace(".", ",") + " %"
+
+
+def _entero(valor):
+    return f"{int(valor):,}".replace(",", ".")
+
+
+def _mayuscula(texto):
+    return texto[:1].upper() + texto[1:]
+
+
+def _nombre(texto):
+    """QUINDÍO -> Quindío; NORTE DE SANTANDER -> Norte de Santander."""
+    return " ".join(
+        palabra.lower() if palabra in ("DE", "DEL", "LA", "Y") else palabra.capitalize()
+        for palabra in texto.split()
+    )
+
+
+def _lista(elementos):
+    """['a', 'b', 'c'] -> 'a, b y c'."""
+    return elementos[0] if len(elementos) == 1 else ", ".join(elementos[:-1]) + " y " + elementos[-1]
+
+
+def _etiqueta(genero, grupo, arma):
+    return f"{genero.capitalize()} · {grupo.lower()} · {arma.lower()}"
+
+
+def leer_filtros(df, parametros):
+    """Valida los filtros recibidos en la URL (?departamento=...&anio=...)."""
+    departamento = parametros.get("departamento") or None
+    if departamento not in set(df["DEPARTAMENTO"]):
+        departamento = None
+    anio = parametros.get("anio") or None
+    anio = int(anio) if anio in {str(a) for a in ANIOS} else None
+    return departamento, anio
+
+
+def filtrar(df, departamento=None, anio=None):
+    if departamento:
+        df = df[df["DEPARTAMENTO"] == departamento]
+    if anio:
+        df = df[df["AÑO"] == anio]
+    return df
+
+
+def datos_combinaciones(df, cantidad=10):
+    """Visualización 1: combinaciones de género, grupo etario y arma/medio con más víctimas."""
+    tabla = combinaciones(df).head(cantidad)
+    return [
+        {
+            "etiqueta": _etiqueta(fila["GENERO"], fila["GRUPO ETARIO"], fila["ARMAS MEDIOS"]),
+            "victimas": int(fila["CANTIDAD"]),
+            "porcentaje": round(float(fila["PORCENTAJE"]), 1),
+            "acumulado": round(float(fila["PORCENTAJE_ACUMULADO"]), 1),
+        }
+        for _, fila in tabla.iterrows()
+    ]
+
+
+def datos_mujeres(df):
+    """Visualización 2: % de mujeres en cada cruce de grupo etario y arma/medio."""
+    tabla = mujeres_por_grupo_y_arma(df).set_index(["GRUPO ETARIO", "ARMAS MEDIOS"])
+    celdas = []
+    for grupo in GRUPOS_TABLERO:
+        fila = []
+        for arma in ARMAS_TABLERO:
+            victimas = int(tabla["VICTIMAS"].get((grupo, arma), 0))
+            fila.append({
+                "victimas": victimas,
+                "porcentaje": round(float(tabla["PCT_MUJERES"].get((grupo, arma), 0)), 1),
+                "confiable": victimas >= MINIMO_CELDA,
+            })
+        celdas.append(fila)
+    return {"grupos": GRUPOS_TABLERO, "armas": ARMAS_TABLERO, "celdas": celdas}
+
+
+def datos_departamentos(df):
+    """Visualización 3: % de víctimas por arma/medio en cada departamento, ordenado por % con arma."""
+    tabla = armas_por_departamento(df).sort_values("% CON ARMA", ascending=False)
+    return {
+        "departamentos": list(tabla.index),
+        "armas": ARMAS_TABLERO,
+        "porcentajes": {
+            arma: [round(float(v), 1) for v in tabla.get(arma, pd.Series(0, index=tabla.index))]
+            for arma in ARMAS_TABLERO
+        },
+        "con_arma": [round(float(v), 1) for v in tabla["% CON ARMA"]],
+        "victimas": [int(v) for v in tabla["VICTIMAS"]],
+    }
+
+
+def _alcance(departamento, anio):
+    lugar = f"en {_nombre(departamento)}" if departamento else "en el país"
+    periodo = f"durante {anio}" + (" (enero a julio)" if anio == 2026 else "") if anio else "entre 2025 y 2026"
+    return f"{lugar} {periodo}"
+
+
+def interpretar_combinaciones(combinaciones_top, departamento, anio):
+    if len(combinaciones_top) < 3:
+        return "No hay suficientes combinaciones con el filtro seleccionado para compararlas."
+    primera, segunda, tercera = combinaciones_top[:3]
+    veces = f"{primera['victimas'] / segunda['victimas']:.1f}".replace(".", ",")
+    return (
+        f"{_mayuscula(_alcance(departamento, anio))}, la combinación «{primera['etiqueta']}» reúne el "
+        f"{_pct(primera['porcentaje'])} de las víctimas, {veces} veces la segunda («{segunda['etiqueta']}», "
+        f"{_pct(segunda['porcentaje'])}). Las tres primeras combinaciones suman el {_pct(tercera['acumulado'])}: "
+        "la violencia intrafamiliar registrada se concentra en muy pocas combinaciones de género, edad y medio."
+    )
+
+
+def interpretar_mujeres(df, mujeres):
+    partes = []
+    for grupo, fila in zip(mujeres["grupos"], mujeres["celdas"]):
+        confiables = [celda["porcentaje"] for celda in fila if celda["confiable"]]
+        if not confiables:
+            partes.append(f"en {grupo.lower()}, sin víctimas suficientes para comparar")
+        elif len(confiables) == 1:
+            partes.append(f"en {grupo.lower()}, el {_pct(confiables[0])}")
+        else:
+            partes.append(f"en {grupo.lower()}, entre el {_pct(min(confiables))} y el {_pct(max(confiables))}")
+    texto = "Porcentaje de mujeres víctimas según el arma o medio: " + "; ".join(partes) + "."
+
+    victimas_grupo = df.groupby("GRUPO ETARIO")["CANTIDAD"].sum()
+    if victimas_grupo.get("ADULTOS", 0) >= MINIMO_CELDA and victimas_grupo.get("MENORES", 0) >= MINIMO_CELDA:
+        genero = genero_por_grupo_etario(df)
+        adultos, menores = genero.loc["ADULTOS", "FEMENINO"], genero.loc["MENORES", "FEMENINO"]
+        comparacion = "más pareja" if abs(menores - 50) < abs(adultos - 50) else "menos pareja"
+        texto += (
+            f" En total, las mujeres son el {_pct(adultos)} de las víctimas adultas y el {_pct(menores)} de las "
+            f"menores: la afectación entre sexos es {comparacion} en niños y niñas que en adultos."
+        )
+    return texto + f" Las celdas grises tienen menos de {MINIMO_CELDA} víctimas y su porcentaje no es confiable."
+
+
+def interpretar_departamentos(df, deptos, departamento, anio):
+    nombres, con_arma = deptos["departamentos"], deptos["con_arma"]
+    if not nombres:
+        return "No hay datos para el año seleccionado."
+    nacional = df.loc[df["CON_ARMA"], "CANTIDAD"].sum() / df["CANTIDAD"].sum() * 100
+    primeros = _lista([f"{_nombre(n)} ({_pct(p)})" for n, p in zip(nombres[:3], con_arma[:3])])
+    casi_sin_armas = [_nombre(n) for n, p in zip(nombres, con_arma) if p < 2]
+    texto = (
+        f"{_mayuscula(_alcance(None, anio))}, el {_pct(nacional)} de las víctimas fueron agredidas con arma o "
+        f"medio, pero el porcentaje cambia mucho entre departamentos: encabezan {primeros}"
+    )
+    if casi_sin_armas:
+        texto += f", mientras {_lista(casi_sin_armas)} registran menos del 2 %"
+    texto += "."
+    if departamento in nombres:
+        puesto = nombres.index(departamento) + 1
+        texto += (
+            f" {_nombre(departamento)} registra {_pct(con_arma[puesto - 1])} con arma o medio y ocupa el puesto "
+            f"{puesto} de {len(nombres)}."
+        )
+    return texto + (
+        " Una diferencia tan amplia entre territorios sugiere que también influye la forma de diligenciar "
+        "el campo ARMAS MEDIOS, no solo el hecho."
+    )
+
+
+def contexto(df, parametros):
+    """Todo lo que necesita la plantilla multivariada.html, según los filtros de la URL."""
+    departamento, anio = leer_filtros(df, parametros)
+    datos = filtrar(df, departamento, anio)
+    datos_anio = filtrar(df, anio=anio)  # la visualización 3 compara todos los departamentos
+    combinaciones_top = datos_combinaciones(datos)
+    mujeres = datos_mujeres(datos)
+    deptos = datos_departamentos(datos_anio)
+    return {
+        "resumen": resumen_general(df),
+        "indicadores": indicadores(datos) if len(datos) else None,
+        "filtros": {
+            "departamento": departamento,
+            "anio": anio,
+            "departamentos": sorted(df["DEPARTAMENTO"].unique()),
+            "anios": ANIOS,
+        },
+        "graficas": {"combinaciones": combinaciones_top, "mujeres": mujeres, "departamentos": deptos},
+        "interpretaciones": {
+            "combinaciones": interpretar_combinaciones(combinaciones_top, departamento, anio),
+            "mujeres": interpretar_mujeres(datos, mujeres),
+            "departamentos": interpretar_departamentos(datos_anio, deptos, departamento, anio),
+        },
+    }
 
 
 def _redondear(diccionario):

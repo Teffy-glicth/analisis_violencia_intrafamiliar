@@ -16,6 +16,7 @@
     }
 
     .mv-card h3 {
+      margin-bottom: 1.25rem;
       font-size: 1.15rem;
       font-weight: 700;
     }
@@ -66,6 +67,11 @@
       border: 1px dashed #c9d3d1;
       border-radius: 0.75rem;
       color: var(--muted);
+    }
+
+    .mv-chart.js-plotly-plot {
+      display: block;
+      border: 0;
     }
 
     .mv-interpretation {
@@ -167,19 +173,34 @@
     <h2 id="tablero-heading" class="section-heading">Tablero de control</h2>
 
     <div class="mv-card mb-4">
-      <form class="mv-filters" aria-label="Filtros del tablero">
+      {# Formulario GET: al cambiar un filtro se recarga la página con ?departamento=...&anio=... #}
+      <form id="filtros-mv" class="mv-filters" method="get" action="{{ url_for('multivariada') }}" aria-label="Filtros del tablero">
         <div>
-          <label for="filtro-1" class="form-label fw-semibold">Filtro 1</label>
-          <select id="filtro-1" class="form-select">
-            <option value="">Todos</option>
+          <label for="filtro-departamento" class="form-label fw-semibold">Departamento</label>
+          <select id="filtro-departamento" name="departamento" class="form-select">
+            <option value="">Todos los departamentos</option>
+            {% if filtros %}
+              {% for departamento in filtros.departamentos %}
+                <option value="{{ departamento }}" {% if departamento == filtros.departamento %}selected{% endif %}>{{ departamento }}</option>
+              {% endfor %}
+            {% endif %}
           </select>
         </div>
         <div>
-          <label for="filtro-2" class="form-label fw-semibold">Filtro 2</label>
-          <select id="filtro-2" class="form-select">
-            <option value="">Todos</option>
+          <label for="filtro-anio" class="form-label fw-semibold">Año</label>
+          <select id="filtro-anio" name="anio" class="form-select">
+            <option value="">2025 y 2026</option>
+            {% if filtros %}
+              {% for anio in filtros.anios %}
+                <option value="{{ anio }}" {% if anio == filtros.anio %}selected{% endif %}>{{ anio }}{% if anio == 2026 %} (enero a julio){% endif %}</option>
+              {% endfor %}
+            {% endif %}
           </select>
         </div>
+        <noscript><button type="submit" class="btn btn-outline-secondary">Aplicar</button></noscript>
+        {% if filtros and (filtros.departamento or filtros.anio) %}
+          <a class="btn btn-link" href="{{ url_for('multivariada') }}">Quitar filtros</a>
+        {% endif %}
       </form>
     </div>
 
@@ -187,7 +208,7 @@
       <div class="col-12 col-md-4">
         <div class="mv-card">
           <p class="mv-kpi-label">Víctimas mujeres</p>
-          {% if indicadores is defined %}
+          {% if indicadores %}
             <p id="kpi-mujeres" class="mv-kpi-value">{{ pct(indicadores.pct_mujeres) }}</p>
             <p id="kpi-mujeres-nota" class="mv-kpi-note">
               {{ entero(indicadores.mujeres) }} de {{ entero(indicadores.victimas) }} víctimas
@@ -200,7 +221,7 @@
       <div class="col-12 col-md-4">
         <div class="mv-card">
           <p class="mv-kpi-label">Víctimas con arma o medio</p>
-          {% if indicadores is defined %}
+          {% if indicadores %}
             <p id="kpi-arma" class="mv-kpi-value">{{ pct(indicadores.pct_con_arma) }}</p>
             <p id="kpi-arma-nota" class="mv-kpi-note">
               {{ entero(indicadores.con_arma) }} víctimas con contundentes, arma blanca o arma de fuego
@@ -213,7 +234,7 @@
       <div class="col-12 col-md-4">
         <div class="mv-card">
           <p class="mv-kpi-label">Peso de la combinación principal</p>
-          {% if indicadores is defined %}
+          {% if indicadores %}
             <p id="kpi-combinacion" class="mv-kpi-value">{{ pct(indicadores.pct_combinacion_principal) }}</p>
             <p id="kpi-combinacion-nota" class="mv-kpi-note">
               {{ indicadores.combinacion_principal | capitalize }}
@@ -229,23 +250,42 @@
     <div class="row g-4">
       <div class="col-12">
         <article class="mv-card">
-          <h3>Visualización 1</h3>
-          <div id="grafica-1" class="mv-chart">Gráfica 1</div>
-          <p class="mv-interpretation"><strong>Interpretación:</strong></p>
+          <h3>1. Combinaciones de género, grupo etario y arma o medio con más víctimas</h3>
+          <div id="grafica-1" class="mv-chart" style="height: 460px" role="img"
+               aria-label="Barras horizontales con las diez combinaciones de género, grupo etario y arma o medio con más víctimas">
+            {% if not graficas %}Gráfica 1{% endif %}
+          </div>
+          <p class="mv-interpretation">
+            <strong>Interpretación:</strong>
+            {% if interpretaciones %}{{ interpretaciones.combinaciones }}{% endif %}
+          </p>
         </article>
       </div>
       <div class="col-12">
         <article class="mv-card">
-          <h3>Visualización 2</h3>
-          <div id="grafica-2" class="mv-chart">Gráfica 2</div>
-          <p class="mv-interpretation"><strong>Interpretación:</strong></p>
+          <h3>2. Porcentaje de mujeres víctimas por grupo etario y arma o medio</h3>
+          <div id="grafica-2" class="mv-chart" style="height: 380px" role="img"
+               aria-label="Mapa de calor del porcentaje de mujeres víctimas según grupo etario y arma o medio">
+            {% if not graficas %}Gráfica 2{% endif %}
+          </div>
+          <p class="mv-interpretation">
+            <strong>Interpretación:</strong>
+            {% if interpretaciones %}{{ interpretaciones.mujeres }}{% endif %}
+          </p>
         </article>
       </div>
       <div class="col-12">
         <article class="mv-card">
-          <h3>Visualización 3</h3>
-          <div id="grafica-3" class="mv-chart">Gráfica 3</div>
-          <p class="mv-interpretation"><strong>Interpretación:</strong></p>
+          <h3>3. Arma o medio registrado por departamento</h3>
+          <div id="grafica-3" class="mv-chart" style="height: 820px" role="img"
+               aria-label="Barras apiladas al 100 % con la distribución de víctimas por arma o medio en cada departamento">
+            {% if not graficas %}Gráfica 3{% endif %}
+          </div>
+          <p class="mv-interpretation">
+            <strong>Interpretación:</strong>
+            {% if interpretaciones %}{{ interpretaciones.departamentos }}{% endif %}
+            Esta gráfica compara todos los departamentos (solo la filtra el año) y resalta el departamento elegido.
+          </p>
         </article>
       </div>
     </div>
@@ -365,4 +405,125 @@
       </div>
     </section>
   </div>
+{% endblock %}
+
+{% block scripts %}
+  {% if graficas %}
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+    <script>
+      // Los datos ya vienen calculados desde dimensiones/multivariada.py; aquí solo se dibujan.
+      (function () {
+        const graficas = {{ graficas | tojson }};
+        const departamentoElegido = {{ filtros.departamento | tojson }};
+
+        const NOMBRES_ARMAS = {
+          "CONTUNDENTES": "Contundentes",
+          "ARMA BLANCA / CORTOPUNZANTE": "Arma blanca / cortopunzante",
+          "ARMA DE FUEGO": "Arma de fuego",
+          "SIN EMPLEO DE ARMAS": "Sin empleo de armas",
+        };
+        const CORTOS_ARMAS = {
+          "CONTUNDENTES": "Contun-<br>dentes",
+          "ARMA BLANCA / CORTOPUNZANTE": "Arma<br>blanca",
+          "ARMA DE FUEGO": "Arma<br>de fuego",
+          "SIN EMPLEO DE ARMAS": "Sin<br>armas",
+        };
+        const COLORES_ARMAS = {
+          "CONTUNDENTES": "#2a78d6",
+          "ARMA BLANCA / CORTOPUNZANTE": "#eb6834",
+          "ARMA DE FUEGO": "#1baf7a",
+          "SIN EMPLEO DE ARMAS": "#c9d3d1",
+        };
+        const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
+        const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
+        const CONFIG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] };
+        const capitalizar = (texto) => texto.charAt(0) + texto.slice(1).toLowerCase();
+        const pct = (valor) => valor.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %";
+
+        // Los filtros recargan la página al cambiar.
+        document.querySelectorAll("#filtros-mv select").forEach((select) => {
+          select.addEventListener("change", () => select.form.submit());
+        });
+
+        // Visualización 1: combinaciones con más víctimas.
+        const combinaciones = graficas.combinaciones.slice().reverse();
+        Plotly.newPlot("grafica-1", [{
+          type: "bar",
+          orientation: "h",
+          x: combinaciones.map((c) => c.victimas),
+          y: combinaciones.map((c) => c.etiqueta.replace(/ · (?=[^·]*$)/, "<br>")),
+          text: combinaciones.map((c) => pct(c.porcentaje)),
+          textposition: "outside",
+          cliponaxis: false,
+          marker: { color: "#145b63" },
+          customdata: combinaciones.map((c) => [c.etiqueta, pct(c.porcentaje)]),
+          hovertemplate: "%{customdata[0]}<br>%{x:,} víctimas (%{customdata[1]})<extra></extra>",
+        }], {
+          ...BASE,
+          margin: { l: 10, r: 60, t: 10, b: 40 },
+          xaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false, ticklabelstandoff: 6 },
+          yaxis: { automargin: true, ticklabelstandoff: 10 },
+        }, CONFIG);
+
+        // Visualización 2: % de mujeres por grupo etario y arma o medio.
+        const mujeres = graficas.mujeres;
+        Plotly.newPlot("grafica-2", [{
+          type: "heatmap",
+          x: mujeres.armas.map((a) => CORTOS_ARMAS[a]),
+          y: mujeres.grupos.map(capitalizar),
+          z: mujeres.celdas.map((fila) => fila.map((c) => (c.confiable ? c.porcentaje : null))),
+          text: mujeres.celdas.map((fila) => fila.map((c) => (c.confiable ? Math.round(c.porcentaje) + " %" : "n=" + c.victimas))),
+          customdata: mujeres.celdas.map((fila, i) => fila.map((c, j) =>
+            `${capitalizar(mujeres.grupos[i])} · ${NOMBRES_ARMAS[mujeres.armas[j]]}<br>` +
+            `${c.victimas ? pct(c.porcentaje) : "–"} mujeres · ${c.victimas.toLocaleString("es-CO")} víctimas` +
+            (c.confiable ? "" : "<br>Menos de 30 víctimas: porcentaje no confiable"))),
+          texttemplate: "%{text}",
+          hovertemplate: "%{customdata}<extra></extra>",
+          hoverongaps: false,
+          zmin: 40,
+          zmax: 90,
+          colorscale: [[0, "#cde2fb"], [0.5, "#3987e5"], [1, "#104281"]],
+          xgap: 2,
+          ygap: 2,
+          colorbar: { title: { text: "% mujeres", side: "right" }, ticksuffix: " %", thickness: 12 },
+        }], {
+          ...BASE,
+          plot_bgcolor: "#eef1f0",
+          margin: { l: 10, r: 10, t: 10, b: 10 },
+          xaxis: { automargin: true, tickangle: 0, ticklabelstandoff: 8 },
+          yaxis: { automargin: true, ticklabelstandoff: 10 },
+        }, CONFIG);
+
+        // Visualización 3: arma o medio por departamento (100 %), resaltando el departamento elegido.
+        const deptos = graficas.departamentos;
+        const orden = deptos.departamentos.slice().reverse();  // el mayor % con arma queda arriba
+        const indice = (d) => deptos.departamentos.indexOf(d);
+        const opacidad = orden.map((d) => (!departamentoElegido || d === departamentoElegido ? 1 : 0.35));
+        Plotly.newPlot("grafica-3", deptos.armas.map((arma) => ({
+          type: "bar",
+          orientation: "h",
+          name: NOMBRES_ARMAS[arma],
+          y: orden,
+          x: orden.map((d) => deptos.porcentajes[arma][indice(d)]),
+          customdata: orden.map((d) => deptos.victimas[indice(d)].toLocaleString("es-CO")),
+          marker: { color: COLORES_ARMAS[arma], opacity: opacidad, line: { color: "#ffffff", width: 1 } },
+          hovertemplate: "%{y}<br>" + NOMBRES_ARMAS[arma] + ": %{x:.1f} %<br>%{customdata} víctimas en el departamento<extra></extra>",
+        })), {
+          ...BASE,
+          barmode: "stack",
+          bargap: 0.2,
+          margin: { l: 10, r: 10, t: 70, b: 40 },
+          xaxis: { automargin: true, range: [0, 100], ticksuffix: " %", gridcolor: "#e1e0d9", title: { text: "% de víctimas del departamento", standoff: 12 }, ticklabelstandoff: 6 },
+          yaxis: {
+            automargin: true,
+            ticklabelstandoff: 10,
+            tickfont: { size: 11 },
+            tickvals: orden,
+            ticktext: orden.map((d) => (d === departamentoElegido ? `<b>${d}</b>` : d)),
+          },
+          legend: { orientation: "h", x: 0, y: 1.03, yanchor: "bottom", traceorder: "normal", itemwidth: 40 },
+        }, CONFIG);
+      })();
+    </script>
+  {% endif %}
 {% endblock %}
