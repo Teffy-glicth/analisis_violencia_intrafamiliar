@@ -196,6 +196,11 @@ def _pct(valor):
     return f"{valor:.1f}".replace(".", ",") + " %"
 
 
+def _variacion(valor):
+    """17.0 -> '+17,0 %'."""
+    return ("+" if valor > 0 else "") + _pct(valor)
+
+
 def _entero(valor):
     return f"{int(valor):,}".replace(",", ".")
 
@@ -206,6 +211,8 @@ def _mayuscula(texto):
 
 def _nombre(texto):
     """QUINDÍO -> Quindío; NORTE DE SANTANDER -> Norte de Santander."""
+    if texto == "BOGOTA":  # el conjunto de datos lo escribe sin tilde
+        return "Bogotá"
     return " ".join(
         palabra.lower() if palabra in ("DE", "DEL", "LA", "Y") else palabra.capitalize()
         for palabra in texto.split()
@@ -354,6 +361,121 @@ def interpretar_departamentos(df, deptos, departamento, anio):
     )
 
 
+# --- Cifras de los conocimientos, casos inusuales, limitación y decisión (siempre con todos los datos) ---
+
+MINIMO_DEPARTAMENTO = 1000  # para priorizar departamentos se ignoran los que tienen muy pocas víctimas
+PRIORIZADOS = 5
+
+
+def cifras_conocimientos(df):
+    """Cifras ya formateadas que usa el texto de la página; se calculan sobre todo el periodo."""
+    total = df["CANTIDAD"].sum()
+    genero = genero_por_grupo_etario(df)
+    armas_grupo = armas_por_grupo_etario(df)
+    tabla_combinaciones = combinaciones(df)
+    armas_pais = armas_nacional(df)
+    deptos = armas_por_departamento(df)
+    registro = registro_por_departamento(df)
+    menores = menores_bogota_vs_resto(df)
+    grandes = registros_grandes(df)
+    meses = victimas_por_mes(df)
+    dias = victimas_por_dia(df, "2025-12")
+    interanual = comparacion_interanual(df)
+
+    def combinacion(genero_, grupo, arma):
+        fila = tabla_combinaciones[
+            (tabla_combinaciones["GENERO"] == genero_)
+            & (tabla_combinaciones["GRUPO ETARIO"] == grupo)
+            & (tabla_combinaciones["ARMAS MEDIOS"] == arma)
+        ]
+        return float(fila["PORCENTAJE"].sum())
+
+    # Conocimiento 1
+    mujeres_adultas = genero.loc["ADULTOS", "FEMENINO"]
+    hombres_adultos = genero.loc["ADULTOS", "MASCULINO"]
+    mujeres_menores = genero.loc["MENORES", "FEMENINO"]
+    hombres_menores = genero.loc["MENORES", "MASCULINO"]
+
+    # Conocimiento 2
+    grandes_deptos = deptos[deptos["VICTIMAS"] >= MINIMO_DEPARTAMENTO]
+    priorizados = grandes_deptos.sort_values("CONTUNDENTES", ascending=False).head(PRIORIZADOS)
+    casi_sin_contundentes = deptos[deptos["CONTUNDENTES"] < 2].sort_values("CONTUNDENTES", ascending=False)
+    mayor = deptos["CONTUNDENTES"].idxmax()
+
+    # Conocimiento 3
+    bogota = registro.loc["BOGOTA"]
+    resto = registro.drop(index="BOGOTA")[["REGISTROS", "VICTIMAS"]].sum()
+
+    # Casos inusuales
+    diciembre = pd.Period("2025-12", freq="M")
+    otros_meses = meses.drop(index=diciembre)
+    por_mes_depto = df.pivot_table(index="DEPARTAMENTO", columns="MES", values="CANTIDAD", aggfunc="sum", fill_value=0)
+    bajan_en_diciembre = int((por_mes_depto[diciembre] < por_mes_depto[pd.Period("2025-11", freq="M")]).sum())
+    grupos_principales = interanual.drop(index="No reporta", level="GENERO").drop(index="No reporta", level="GRUPO ETARIO")
+    todos_suben = bool((grupos_principales["VARIACION_%"] > 0).all())
+
+    return {
+        # Conocimiento 1
+        "mujeres_adultos": _pct(mujeres_adultas),
+        "mujeres_adolescentes": _pct(genero.loc["ADOLESCENTES", "FEMENINO"]),
+        "mujeres_menores": _pct(mujeres_menores),
+        "hombres_menores": _pct(hombres_menores),
+        "combinacion_principal": _pct(tabla_combinaciones["PORCENTAJE"].iloc[0]),
+        "tres_combinaciones": _pct(tabla_combinaciones["PORCENTAJE_ACUMULADO"].iloc[2]),
+        "razon_adultos": f"{mujeres_adultas / hombres_adultos:.1f}".replace(".", ","),
+        "razon_menores": f"{mujeres_menores / hombres_menores:.1f}".replace(".", ","),
+        "contundentes_menores": _pct(armas_grupo.loc["MENORES", "CONTUNDENTES"]),
+        "contundentes_adultos": _pct(armas_grupo.loc["ADULTOS", "CONTUNDENTES"]),
+        # Conocimiento 2
+        "priorizados": _lista([_nombre(d) for d in priorizados.index]),
+        "priorizados_con_valor": _lista([f"{_nombre(d)} {_pct(v)}" for d, v in priorizados["CONTUNDENTES"].items()]),
+        "casi_sin_contundentes": _lista(
+            [f"{_nombre(d)} {_pct(v)}" for d, v in casi_sin_contundentes["CONTUNDENTES"].items()]
+        ),
+        "contundentes_pais": _pct(armas_pais["CONTUNDENTES"]),
+        "sin_armas_pais": _pct(armas_pais[SIN_ARMAS]),
+        "contundentes_min": _pct(deptos["CONTUNDENTES"].min()),
+        "contundentes_max": _pct(deptos["CONTUNDENTES"].max()),
+        "departamento_mayor": _nombre(mayor),
+        "contundentes_mayor": _pct(deptos.loc[mayor, "CONTUNDENTES"]),
+        "contundentes_quindio": _pct(deptos.loc["QUINDÍO", "CONTUNDENTES"]),
+        "contundentes_risaralda": _pct(deptos.loc["RISARALDA", "CONTUNDENTES"]),
+        "mujeres_depto_min": _pct(deptos["% MUJERES"].min()),
+        "mujeres_depto_max": _pct(deptos["% MUJERES"].max()),
+        "minimo_departamento": _entero(MINIMO_DEPARTAMENTO),
+        # Conocimiento 3
+        "bogota_registros": _entero(bogota["REGISTROS"]),
+        "bogota_pct_registros": _pct(bogota["PCT_REGISTROS_PAIS"]),
+        "bogota_victimas": _entero(bogota["VICTIMAS"]),
+        "bogota_pct_victimas": _pct(bogota["PCT_VICTIMAS_PAIS"]),
+        "bogota_por_registro": f"{bogota['VICTIMAS_POR_REGISTRO']:.1f}".replace(".", ","),
+        "resto_por_registro": f"{resto['VICTIMAS'] / resto['REGISTROS']:.1f}".replace(".", ","),
+        "subestimacion_bogota": f"{bogota['PCT_VICTIMAS_PAIS'] / bogota['PCT_REGISTROS_PAIS']:.0f}",
+        "registros_grandes": _entero(grandes["total"]),
+        "registros_grandes_bogota": _entero(grandes["por_departamento"].get("BOGOTA", 0)),
+        "maximo_registro": _entero(grandes["maximo"]),
+        "menores_bogota": _pct(menores["pct_menores_bogota"]),
+        "menores_resto": _pct(menores["pct_menores_resto"]),
+        "menores_pais_en_bogota": _pct(menores["pct_menores_pais_en_bogota"]),
+        # Casos inusuales
+        "diciembre": _entero(meses[diciembre]),
+        "otros_meses_min": _entero(otros_meses.min()),
+        "otros_meses_max": _entero(otros_meses.max()),
+        "diciembre_dia_1": _entero(dias.iloc[0]),
+        "diciembre_ultimo_dia": _entero(dias.iloc[-1]),
+        "diciembre_departamentos_bajan": bajan_en_diciembre,
+        "departamentos": df["DEPARTAMENTO"].nunique(),
+        "interanual_alcance": "todos los grupos" if todos_suben else "la mayoría de los grupos",
+        "interanual_mujeres_adultas": _variacion(interanual.loc[("ADULTOS", "FEMENINO"), "VARIACION_%"]),
+        "interanual_menores_masculinos": _variacion(interanual.loc[("MENORES", "MASCULINO"), "VARIACION_%"]),
+        # Decisión
+        "mujeres_adultas_sin_armas_y_contundentes": _pct(
+            combinacion("FEMENINO", "ADULTOS", SIN_ARMAS) + combinacion("FEMENINO", "ADULTOS", "CONTUNDENTES")
+        ),
+        "victimas": _entero(total),
+    }
+
+
 def contexto(df, parametros):
     """Todo lo que necesita la plantilla multivariada.html, según los filtros de la URL."""
     departamento, anio = leer_filtros(df, parametros)
@@ -364,6 +486,7 @@ def contexto(df, parametros):
     deptos = datos_departamentos(datos_anio)
     return {
         "resumen": resumen_general(df),
+        "cifras": cifras_conocimientos(df),
         "indicadores": indicadores(datos) if len(datos) else None,
         "filtros": {
             "departamento": departamento,

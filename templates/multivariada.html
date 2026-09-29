@@ -83,7 +83,9 @@
   </style>
 {% endblock %}
 
-{# Formato colombiano: 91.955 y 73,9 %. Los datos llegan desde app.py (resumen e indicadores). #}
+{# Formato colombiano: 91.955 y 73,9 %. Los datos llegan desde app.py (mv.contexto). #}
+{# c("clave"): cifra ya calculada en dimensiones/multivariada.py (cifras_conocimientos); «–» si no llegan datos. #}
+{% macro c(clave) %}{% if cifras is defined %}{{ cifras[clave] }}{% else %}–{% endif %}{% endmacro %}
 {% macro entero(valor) %}{{ "{:,}".format(valor) | replace(",", ".") }}{% endmacro %}
 {% macro pct(valor) %}{{ "%.1f" | format(valor) | replace(".", ",") }} %{% endmacro %}
 
@@ -293,6 +295,7 @@
 
   <section class="mb-5" aria-labelledby="conocimientos-heading">
     <h2 id="conocimientos-heading" class="section-heading">Conocimientos evidentes</h2>
+    <p class="text-secondary">Cifras calculadas con todos los datos (enero de 2025 a julio de 2026); no cambian con los filtros.</p>
     <div class="row g-4">
       <div class="col-12">
         <article class="mv-card">
@@ -306,12 +309,17 @@
             <dd>Suma de CANTIDAD por las tres variables y porcentaje de cada género dentro de cada grupo etario.</dd>
             <dt>Evidencia</dt>
             <dd>
-              Mujeres víctimas: adultos 75,4 %, adolescentes 67,7 %, menores 55,3 % (hombres 44,1 %).
-              La combinación «femenino · adultos · sin armas» reúne el 59,6 % de las víctimas y las tres
-              primeras combinaciones suman el 87,7 %.
+              Mujeres víctimas: adultos {{ c("mujeres_adultos") }}, adolescentes {{ c("mujeres_adolescentes") }},
+              menores {{ c("mujeres_menores") }} (hombres {{ c("hombres_menores") }}).
+              La combinación «femenino · adultos · sin armas» reúne el {{ c("combinacion_principal") }} de las
+              víctimas y las tres primeras combinaciones suman el {{ c("tres_combinaciones") }}.
             </dd>
             <dt>Hallazgo</dt>
-            <dd>En adultos hay 3 mujeres víctimas por cada hombre; en menores la relación es casi 1 a 1. En menores también baja el uso de contundentes (5,8 % frente a 13,1 % en adultos).</dd>
+            <dd>
+              En adultos hay {{ c("razon_adultos") }} mujeres víctimas por cada hombre; en menores, {{ c("razon_menores") }}.
+              En menores también baja el uso de contundentes ({{ c("contundentes_menores") }} frente a
+              {{ c("contundentes_adultos") }} en adultos).
+            </dd>
             <dt>Interpretación</dt>
             <dd>La violencia contra adultos tiene un fuerte sesgo de género, mientras que contra niños y niñas afecta a ambos sexos de forma parecida.</dd>
             <dt>Utilidad</dt>
@@ -334,16 +342,26 @@
             <dd>Porcentaje de víctimas por arma o medio y porcentaje de mujeres en cada departamento.</dd>
             <dt>Evidencia</dt>
             <dd>
-              Contundentes: Quindío 80,8 %, Caldas 46,3 %, Santander 35,8 %, Cauca 33,5 %, Meta 32,8 %;
-              frente a Bogotá 1,6 %, Caquetá 1,1 %, Putumayo 0,9 %, San Andrés y Vaupés 0 %
-              (promedio nacional 12,6 %). El porcentaje de mujeres se mantiene entre 67 % y 85 %.
+              Contundentes, en los departamentos con al menos {{ c("minimo_departamento") }} víctimas:
+              {{ c("priorizados_con_valor") }}; frente a {{ c("casi_sin_contundentes") }}
+              (promedio nacional {{ c("contundentes_pais") }}). El porcentaje de mujeres se mantiene entre
+              {{ c("mujeres_depto_min") }} y {{ c("mujeres_depto_max") }}.
             </dd>
             <dt>Hallazgo</dt>
-            <dd>El género se comporta parecido en todo el país, pero el medio registrado va de 0 % a 81 %. Quindío invierte el patrón nacional, donde el 86,4 % de las víctimas no reporta armas.</dd>
+            <dd>
+              El género se comporta parecido en todo el país, pero el porcentaje de contundentes va de
+              {{ c("contundentes_min") }} a {{ c("contundentes_max") }}. {{ c("departamento_mayor") }}
+              ({{ c("contundentes_mayor") }}) invierte el patrón nacional, donde el {{ c("sin_armas_pais") }}
+              de las víctimas no reporta armas.
+            </dd>
             <dt>Interpretación</dt>
-            <dd>Diferencias tan grandes entre departamentos vecinos (Quindío 80,8 % y Risaralda 31,7 %) sugieren que también influye la forma en que cada seccional tipifica el medio.</dd>
+            <dd>
+              Diferencias tan grandes entre departamentos vecinos (Quindío {{ c("contundentes_quindio") }} y
+              Risaralda {{ c("contundentes_risaralda") }}) sugieren que también influye la forma en que cada
+              seccional tipifica el medio.
+            </dd>
             <dt>Utilidad</dt>
-            <dd>Priorizar Quindío, Caldas, Santander, Cauca y Meta en prevención de lesiones y estandarizar el diligenciamiento de ARMAS MEDIOS.</dd>
+            <dd>Priorizar {{ c("priorizados") }} en prevención de lesiones y estandarizar el diligenciamiento de ARMAS MEDIOS.</dd>
             <dt>Limitación</dt>
             <dd>No permite afirmar que la violencia sea más grave en esos departamentos; puede ser un efecto del registro.</dd>
           </dl>
@@ -362,15 +380,21 @@
             <dd>Comparación entre número de registros, suma de víctimas y víctimas por registro; porcentaje de menores y adolescentes por departamento.</dd>
             <dt>Evidencia</dt>
             <dd>
-              Bogotá tiene 4.608 registros (5,0 %) pero 82.129 víctimas (35,2 %): 17,8 víctimas por registro
-              frente a unas 2,2 en Antioquia o Valle. 567 de los 568 registros con 50 o más víctimas son de
-              Bogotá (máximo 198). Menores y adolescentes: 12,8 % en Bogotá y 4,9 % en el resto; Bogotá reúne
-              el 58,5 % de estas víctimas del país.
+              Bogotá tiene {{ c("bogota_registros") }} registros ({{ c("bogota_pct_registros") }}) pero
+              {{ c("bogota_victimas") }} víctimas ({{ c("bogota_pct_victimas") }}): {{ c("bogota_por_registro") }}
+              víctimas por registro frente a {{ c("resto_por_registro") }} en el resto del país.
+              {{ c("registros_grandes_bogota") }} de los {{ c("registros_grandes") }} registros con 50 o más
+              víctimas son de Bogotá (máximo {{ c("maximo_registro") }}). Menores y adolescentes:
+              {{ c("menores_bogota") }} en Bogotá y {{ c("menores_resto") }} en el resto; Bogotá reúne el
+              {{ c("menores_pais_en_bogota") }} de estas víctimas del país.
             </dd>
             <dt>Hallazgo</dt>
             <dd>Bogotá consolida varias víctimas en una sola fila y su proporción de menores es más del doble que la del resto del país.</dd>
             <dt>Interpretación</dt>
-            <dd>Contar filas subestimaría a Bogotá unas 7 veces. La mayor proporción de menores puede reflejar una mayor capacidad de denuncia (colegios, ICBF, comisarías).</dd>
+            <dd>
+              Contar filas subestimaría a Bogotá unas {{ c("subestimacion_bogota") }} veces. La mayor proporción de
+              menores puede reflejar una mayor capacidad de denuncia (colegios, ICBF, comisarías).
+            </dd>
             <dt>Utilidad</dt>
             <dd>Comparar territorios con tasas y no con conteos, y fortalecer la detección de violencia contra menores fuera de Bogotá, donde podría haber subregistro.</dd>
             <dt>Limitación</dt>
@@ -385,10 +409,23 @@
     <h2 id="inusuales-heading" class="section-heading">Posibles casos inusuales</h2>
     <div class="mv-card">
       <ul class="mb-0">
-        <li><strong>Diciembre de 2025:</strong> 6.528 víctimas frente a 10.000–15.000 en los demás meses. La cifra cae día a día (394 el día 1 y 11 el día 31) en todos los departamentos, lo que apunta a una carga incompleta de datos más que a una disminución real.</li>
-        <li><strong>Quindío:</strong> 80,8 % de víctimas con contundentes, frente al 12,6 % nacional.</li>
-        <li><strong>Bogotá:</strong> registros de hasta 198 víctimas en una sola fila.</li>
-        <li><strong>Enero a julio, 2026 frente a 2025:</strong> aumento en todos los grupos (mujeres adultas +17 %, menores masculinos +23 %).</li>
+        <li>
+          <strong>Diciembre de 2025:</strong> {{ c("diciembre") }} víctimas frente a entre {{ c("otros_meses_min") }}
+          y {{ c("otros_meses_max") }} en los demás meses. La cifra cae día a día ({{ c("diciembre_dia_1") }} el
+          día 1 y {{ c("diciembre_ultimo_dia") }} el día 31) y baja frente a noviembre en
+          {{ c("diciembre_departamentos_bajan") }} de {{ c("departamentos") }} departamentos, lo que apunta a una
+          carga incompleta de datos más que a una disminución real.
+        </li>
+        <li>
+          <strong>{{ c("departamento_mayor") }}:</strong> {{ c("contundentes_mayor") }} de víctimas con contundentes,
+          frente al {{ c("contundentes_pais") }} nacional.
+        </li>
+        <li><strong>Bogotá:</strong> registros de hasta {{ c("maximo_registro") }} víctimas en una sola fila.</li>
+        <li>
+          <strong>Enero a julio, 2026 frente a 2025:</strong> aumento en {{ c("interanual_alcance") }}
+          (mujeres adultas {{ c("interanual_mujeres_adultas") }}, menores masculinos
+          {{ c("interanual_menores_masculinos") }}).
+        </li>
       </ul>
     </div>
   </section>
@@ -397,11 +434,27 @@
     <section class="col-12 col-lg-6" aria-labelledby="limitacion-heading">
       <div class="mv-card">
         <h2 id="limitacion-heading" class="section-heading">Limitación del análisis</h2>
+        <p class="mb-0">
+          Los datos son denuncias registradas por la Policía, no la totalidad de los hechos de violencia
+          intrafamiliar. La forma de registro cambia entre territorios y periodos: Bogotá agrupa en promedio
+          {{ c("bogota_por_registro") }} víctimas por fila frente a {{ c("resto_por_registro") }} en el resto del
+          país, el campo ARMAS MEDIOS se diligencia de forma muy distinta entre departamentos y diciembre de 2025
+          ({{ c("diciembre") }} víctimas) parece incompleto. Además, el conjunto no incluye población, por lo que no
+          se pueden calcular tasas. Las relaciones encontradas describen el registro; no demuestran causas.
+        </p>
       </div>
     </section>
     <section class="col-12 col-lg-6" aria-labelledby="decision-heading">
       <div class="mv-card">
         <h2 id="decision-heading" class="section-heading">Decisión sustentada en los datos</h2>
+        <p class="mb-0">
+          Enfocar las campañas de prevención en <strong>mujeres adultas</strong>, que suman el
+          {{ c("mujeres_adultas_sin_armas_y_contundentes") }} de las víctimas entre las agredidas sin armas y con
+          contundentes, y priorizar <strong>{{ c("priorizados") }}</strong>, los departamentos con mayor porcentaje
+          de víctimas de objetos contundentes (entre los que tienen al menos {{ c("minimo_departamento") }} víctimas), para intervenciones contra ese tipo de agresión. Antes de asignar
+          recursos definitivos, auditar con la Policía el diligenciamiento del campo ARMAS MEDIOS y la carga de
+          diciembre de 2025.
+        </p>
       </div>
     </section>
   </div>
