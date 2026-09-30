@@ -1,7 +1,10 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
+
+from dimensiones.temporal import cargar_datos, contexto
 
 
 app = Flask(__name__)
+datos_temporales = cargar_datos()
 
 
 @app.route("/")
@@ -21,7 +24,8 @@ def territorial():
 
 @app.route("/temporal")
 def temporal():
-    return render_template("temporal.html")
+    datos = contexto(datos_temporales, request.args)
+    return render_template("temporal.html", **datos)
 
 
 @app.route("/multivariada")

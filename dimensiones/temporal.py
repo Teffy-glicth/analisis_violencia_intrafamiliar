@@ -7,9 +7,13 @@ desde la raíz del repositorio:
     python dimensiones/temporal.py
 """
 
+from pathlib import Path
+
 import pandas as pd
 
-RUTA = "data/violencia_intrafamiliar.csv"
+# Ruta absoluta para que funcione sin importar desde qué carpeta se ejecute Flask.
+RUTA = Path(__file__).resolve().parent.parent / "data" / "violencia_intrafamiliar.csv"
+ANIOS = [2025, 2026]
 
 
 def cargar_datos(ruta=RUTA):
@@ -22,18 +26,6 @@ def cargar_datos(ruta=RUTA):
     return df
 
 
-_df_cache = None
-
-
-def cargar_datos_cacheada(ruta=RUTA):
-    """Igual que cargar_datos(), pero solo lee y procesa el CSV una vez por
-    proceso (evita releer las ~92.000 filas en cada request de Flask)."""
-    global _df_cache
-    if _df_cache is None:
-        _df_cache = cargar_datos(ruta)
-    return _df_cache
-
-
 def resumen_general(df):
     """Datos generales del encabezado del tablero."""
     return {
@@ -41,20 +33,29 @@ def resumen_general(df):
         "victimas": int(df["CANTIDAD"].sum()),
         "fecha_inicial": df["FECHA HECHO"].min().date(),
         "fecha_final": df["FECHA HECHO"].max().date(),
-        "anios": sorted(df["AÑO"].dropna().unique().astype(int).tolist()),
     }
 
 
-def aplicar_filtros(df, anio=None, desde=None, hasta=None):
-    """Aplica los 2 filtros interactivos del tablero: año y rango de fechas."""
-    filtrado = df
-    if anio and anio != "todos":
-        filtrado = filtrado[filtrado["AÑO"] == int(anio)]
+# --- Tablero: filtros, datos de las gráficas e indicadores ---
+
+
+def leer_filtros(parametros):
+    """Valida los filtros recibidos en la URL (?anio=...&desde=...&hasta=...)."""
+    anio = parametros.get("anio") or None
+    anio = int(anio) if anio in {str(a) for a in ANIOS} else None
+    desde = parametros.get("desde") or None
+    hasta = parametros.get("hasta") or None
+    return anio, desde, hasta
+
+
+def filtrar(df, anio=None, desde=None, hasta=None):
+    if anio:
+        df = df[df["AÑO"] == anio]
     if desde:
-        filtrado = filtrado[filtrado["FECHA HECHO"] >= pd.to_datetime(desde)]
+        df = df[df["FECHA HECHO"] >= pd.to_datetime(desde)]
     if hasta:
-        filtrado = filtrado[filtrado["FECHA HECHO"] <= pd.to_datetime(hasta)]
-    return filtrado
+        df = df[df["FECHA HECHO"] <= pd.to_datetime(hasta)]
+    return df
 
 
 def serie_mensual(df):
@@ -90,13 +91,27 @@ def comparacion_anual(df):
     return tabla.sort_values("AÑO"), sorted(comunes)
 
 
-def indicadores(df, df_completo=None):
-    """Los tres indicadores del tablero, calculados sobre el subconjunto filtrado.
+def datos_mensual(df):
+    serie = serie_mensual(df)
+    return {"labels": serie["PERIODO"].tolist(), "valores": [int(v) for v in serie["VICTIMAS"]]}
 
-    df_completo (sin filtrar) se usa solo para la comparación año contra año,
-    que necesita conocer todos los años disponibles para saber qué meses son
-    comunes a todos ellos.
-    """
+
+def datos_trimestral(df):
+    tabla = serie_trimestral(df)
+    return {"labels": tabla["ETIQUETA"].tolist(), "valores": [int(v) for v in tabla["CANTIDAD"]]}
+
+
+def datos_comparacion(df_completo):
+    tabla, comunes = comparacion_anual(df_completo)
+    return {
+        "anios": [int(a) for a in tabla["AÑO"]],
+        "valores": [int(v) for v in tabla["VICTIMAS"]],
+        "meses_comunes": comunes,
+    }
+
+
+def indicadores(df, df_completo=None):
+    """Los tres indicadores del tablero, calculados sobre el subconjunto filtrado."""
     df_completo = df if df_completo is None else df_completo
     mensual = serie_mensual(df)
     total = int(df["CANTIDAD"].sum())
@@ -114,28 +129,37 @@ def indicadores(df, df_completo=None):
         mes_pico = {"periodo": fila_pico["PERIODO"], "victimas": int(fila_pico["VICTIMAS"])}
         mes_valle = {"periodo": fila_valle["PERIODO"], "victimas": int(fila_valle["VICTIMAS"])}
 
-    comp, comunes = comparacion_anual(df_completo)
-    variacion_anual = None
-    if len(comp) >= 2:
-        v_ini, v_fin = comp["VICTIMAS"].iloc[0], comp["VICTIMAS"].iloc[-1]
-        if v_ini:
-            variacion_anual = round((v_fin / v_ini - 1) * 100, 1)
+    _, comunes = comparacion_anual(df_completo)
 
     return {
         "victimas": total,
         "variacion_ultimo_mes": variacion,
         "mes_pico": mes_pico,
         "mes_valle": mes_valle,
-        "variacion_anual": variacion_anual,
-        "meses_comparados": comunes,
+        "meses_comparados": len(comunes),
     }
 
 
 def victimas_por_dia(df, mes="2025-12"):
-    """Víctimas por día de un mes, para revisar si la carga está incompleta
-    (evidencia de la anomalía de diciembre de 2025)."""
+    """Víctimas por día de un mes (evidencia de la anomalía de diciembre de 2025)."""
     datos_mes = df[df["MES"] == pd.Period(mes, freq="M")]
     return datos_mes.groupby(datos_mes["FECHA HECHO"].dt.day)["CANTIDAD"].sum()
+
+
+def contexto(df, parametros):
+    """Todo lo que necesita la plantilla temporal.html, según los filtros de la URL."""
+    anio, desde, hasta = leer_filtros(parametros)
+    datos = filtrar(df, anio, desde, hasta)
+    return {
+        "resumen": resumen_general(df),
+        "indicadores": indicadores(datos, df_completo=df) if len(datos) else None,
+        "filtros": {"anio": anio, "desde": desde, "hasta": hasta, "anios": ANIOS},
+        "graficas": {
+            "mensual": datos_mensual(datos),
+            "trimestral": datos_trimestral(datos),
+            "comparacion": datos_comparacion(df),
+        },
+    }
 
 
 def _redondear(diccionario):

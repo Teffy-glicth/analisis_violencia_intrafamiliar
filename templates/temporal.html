@@ -3,76 +3,10 @@
 {% block title %}Dimensión temporal | Violencia intrafamiliar{% endblock %}
 
 {% block head %}
-  {# Estilos temporales de la dimensión temporal: quitar este bloque cuando el
-     responsable agregue los generales (mismo criterio usado en multivariada). #}
-  <style>
-    .tp-card {
-      height: 100%;
-      padding: 1.5rem;
-      border: 1px solid #e0e9e7;
-      border-radius: 1rem;
-      background: var(--surface);
-      box-shadow: 0 12px 32px rgb(24 51 59 / 5%);
-    }
-
-    .tp-card h3 {
-      font-size: 1.15rem;
-      font-weight: 700;
-    }
-
-    .tp-knowledge dt {
-      color: var(--brand);
-    }
-
-    .tp-knowledge dd {
-      margin-bottom: 0.75rem;
-    }
-
-    .tp-filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      align-items: end;
-    }
-
-    .tp-filters .form-select,
-    .tp-filters .form-control {
-      min-width: 12rem;
-    }
-
-    .tp-kpi-label {
-      margin-bottom: 0.25rem;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    .tp-kpi-value {
-      margin-bottom: 0.25rem;
-      font-size: 2.25rem;
-      font-weight: 750;
-      line-height: 1.1;
-    }
-
-    .tp-kpi-note {
-      margin-bottom: 0;
-      color: var(--muted);
-      font-size: 0.85rem;
-    }
-
-    .tp-chart {
-      min-height: 22rem;
-    }
-
-    .tp-interpretation {
-      margin-top: 1rem;
-      margin-bottom: 0;
-      padding-top: 1rem;
-      border-top: 1px solid #e0e9e7;
-    }
-  </style>
+  
 {% endblock %}
 
-{# Formato colombiano: 91.955 y 73,9 %. Misma convención que multivariada.html. #}
+{# Formato colombiano: 91.955 y 73,9 %. Los datos llegan desde app.py (tp.contexto). #}
 {% macro entero(valor) %}{{ "{:,}".format(valor) | replace(",", ".") }}{% endmacro %}
 {% macro pct(valor) %}{{ "%.1f" | format(valor) | replace(".", ",") }} %{% endmacro %}
 
@@ -119,67 +53,69 @@
     <h2 id="tablero-heading" class="section-heading">Tablero de control</h2>
 
     <div class="tp-card mb-4">
-      <form class="tp-filters" method="get">
+      {# Formulario GET: al cambiar un filtro se recarga la página con ?anio=...&desde=...&hasta=... #}
+      <form id="filtros-tp" class="tp-filters" method="get" action="{{ url_for('temporal') }}" aria-label="Filtros del tablero">
         <div>
           <label for="filtro-anio" class="form-label fw-semibold">Año</label>
           <select id="filtro-anio" name="anio" class="form-select">
-            <option value="todos" {% if not anio_seleccionado or anio_seleccionado == "todos" %}selected{% endif %}>Todos</option>
-            {% if resumen is defined %}
-              {% for a in resumen.anios %}
-                <option value="{{ a }}" {% if anio_seleccionado == a|string %}selected{% endif %}>{{ a }}</option>
+            <option value="">2025 y 2026</option>
+            {% if filtros %}
+              {% for anio in filtros.anios %}
+                <option value="{{ anio }}" {% if anio == filtros.anio %}selected{% endif %}>{{ anio }}{% if anio == 2026 %} (enero a julio){% endif %}</option>
               {% endfor %}
             {% endif %}
           </select>
         </div>
         <div>
           <label for="filtro-desde" class="form-label fw-semibold">Desde</label>
-          <input type="date" id="filtro-desde" name="desde" class="form-control" value="{{ desde_seleccionado or '' }}">
+          <input type="date" id="filtro-desde" name="desde" class="form-control" value="{{ filtros.desde if filtros else '' }}">
         </div>
         <div>
           <label for="filtro-hasta" class="form-label fw-semibold">Hasta</label>
-          <input type="date" id="filtro-hasta" name="hasta" class="form-control" value="{{ hasta_seleccionado or '' }}">
+          <input type="date" id="filtro-hasta" name="hasta" class="form-control" value="{{ filtros.hasta if filtros else '' }}">
         </div>
-        <div>
-          <button type="submit" class="btn btn-primary">Aplicar filtros</button>
-        </div>
+        <noscript><button type="submit" class="btn btn-outline-secondary">Aplicar</button></noscript>
+        {% if filtros and (filtros.anio or filtros.desde or filtros.hasta) %}
+          <a class="btn btn-link" href="{{ url_for('temporal') }}">Quitar filtros</a>
+        {% endif %}
       </form>
     </div>
 
     <div class="row g-4 mb-4">
       <div class="col-12 col-md-4">
         <div class="tp-card">
-          <p class="tp-kpi-label">Total de víctimas (periodo filtrado)</p>
-          {% if indicadores is defined %}
-            <p class="tp-kpi-value">{{ entero(indicadores.victimas) }}</p>
+          <p class="tp-kpi-label">Total de víctimas (filtro aplicado)</p>
+          {% if indicadores %}
+            <p id="kpi-total" class="tp-kpi-value">{{ entero(indicadores.victimas) }}</p>
             <p class="tp-kpi-note">Suma de CANTIDAD en el rango seleccionado</p>
           {% else %}
-            <p class="tp-kpi-value">–</p>
+            <p id="kpi-total" class="tp-kpi-value">–</p>
           {% endif %}
         </div>
       </div>
       <div class="col-12 col-md-4">
         <div class="tp-card">
           <p class="tp-kpi-label">Variación del último mes</p>
-          {% if indicadores is defined and indicadores.variacion_ultimo_mes is not none %}
-            <p class="tp-kpi-value">{{ pct(indicadores.variacion_ultimo_mes) }}</p>
+          {% if indicadores and indicadores.variacion_ultimo_mes is not none %}
+            <p id="kpi-variacion" class="tp-kpi-value">{{ pct(indicadores.variacion_ultimo_mes) }}</p>
             <p class="tp-kpi-note">Frente al mes inmediatamente anterior</p>
           {% else %}
-            <p class="tp-kpi-value">–</p>
+            <p id="kpi-variacion" class="tp-kpi-value">–</p>
           {% endif %}
         </div>
       </div>
       <div class="col-12 col-md-4">
         <div class="tp-card">
           <p class="tp-kpi-label">Mes pico / mes valle</p>
-          {% if indicadores is defined and indicadores.mes_pico and indicadores.mes_valle %}
-            <p class="tp-kpi-value" style="font-size:1.4rem;">
+          {% if indicadores and indicadores.mes_pico and indicadores.mes_valle %}
+            <p id="kpi-pico" class="tp-kpi-value" style="font-size:1.4rem;">
               {{ indicadores.mes_pico.periodo }} ({{ entero(indicadores.mes_pico.victimas) }})
             </p>
             <p class="tp-kpi-note">
               Valle: {{ indicadores.mes_valle.periodo }} ({{ entero(indicadores.mes_valle.victimas) }})
             </p>
           {% else %}
-            <p class="tp-kpi-value">–</p>
+            <p id="kpi-pico" class="tp-kpi-value">–</p>
           {% endif %}
         </div>
       </div>
@@ -188,9 +124,10 @@
     <div class="row g-4">
       <div class="col-12">
         <article class="tp-card">
-          <h3>Visualización 1 · Víctimas por mes</h3>
-          <div class="tp-chart">
-            {% if grafica_mensual %}{{ grafica_mensual | safe }}{% else %}Gráfica no disponible{% endif %}
+          <h3>1. Víctimas por mes</h3>
+          <div id="grafica-1" class="tp-chart" style="height: 420px" role="img"
+               aria-label="Línea con las víctimas totales por mes entre enero de 2025 y julio de 2026">
+            {% if not graficas %}Gráfica 1{% endif %}
           </div>
           <p class="tp-interpretation">
             <strong>Interpretación:</strong> permite ver la tendencia general mes a mes y detectar
@@ -200,9 +137,10 @@
       </div>
       <div class="col-12">
         <article class="tp-card">
-          <h3>Visualización 2 · Víctimas por trimestre</h3>
-          <div class="tp-chart">
-            {% if grafica_trimestral %}{{ grafica_trimestral | safe }}{% else %}Gráfica no disponible{% endif %}
+          <h3>2. Víctimas por trimestre</h3>
+          <div id="grafica-2" class="tp-chart" style="height: 420px" role="img"
+               aria-label="Barras con las víctimas totales por trimestre y año">
+            {% if not graficas %}Gráfica 2{% endif %}
           </div>
           <p class="tp-interpretation">
             <strong>Interpretación:</strong> agrupa los meses en trimestres para identificar
@@ -212,14 +150,15 @@
       </div>
       <div class="col-12">
         <article class="tp-card">
-          <h3>Visualización 3 · Comparación año contra año</h3>
-          <div class="tp-chart">
-            {% if grafica_comparacion %}{{ grafica_comparacion | safe }}{% else %}Gráfica no disponible{% endif %}
+          <h3>3. Comparación año contra año</h3>
+          <div id="grafica-3" class="tp-chart" style="height: 420px" role="img"
+               aria-label="Barras comparando el total de víctimas de 2025 y 2026 en los mismos meses">
+            {% if not graficas %}Gráfica 3{% endif %}
           </div>
           <p class="tp-interpretation">
             <strong>Interpretación:</strong> compara únicamente los meses presentes en todos los años
             del conjunto de datos
-            {% if indicadores is defined %}({{ indicadores.meses_comparados | length }} meses comunes){% endif %},
+            {% if graficas %}({{ graficas.comparacion.meses_comunes | length }} meses comunes){% endif %},
             para no comparar un año completo contra uno incompleto.
           </p>
         </article>
@@ -339,4 +278,70 @@
       </div>
     </section>
   </div>
+{% endblock %}
+
+{% block scripts %}
+  {% if graficas %}
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+    <script id="datos-graficas-tp" type="application/json">{{ graficas | tojson }}</script>
+    <script>
+      // Los datos ya vienen calculados desde dimensiones/temporal.py; aquí solo se dibujan.
+      (function () {
+        const datosGraficas = JSON.parse(document.getElementById("datos-graficas-tp").textContent);
+
+        const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
+        const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
+        const CONFIG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] };
+
+        // Los filtros recargan la página al cambiar.
+        document.querySelectorAll("#filtros-tp select, #filtros-tp input[type=date]").forEach((campo) => {
+          campo.addEventListener("change", () => campo.form.submit());
+        });
+
+        // Visualización 1: víctimas por mes.
+        Plotly.newPlot("grafica-1", [{
+          type: "scatter",
+          mode: "lines+markers",
+          x: datosGraficas.mensual.labels,
+          y: datosGraficas.mensual.valores,
+          line: { color: "#145b63", width: 3 },
+          marker: { color: "#145b63" },
+          hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
+        }], {
+          ...BASE,
+          margin: { l: 50, r: 20, t: 10, b: 40 },
+          xaxis: { automargin: true, gridcolor: "#e1e0d9" },
+          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
+        }, CONFIG);
+
+        // Visualización 2: víctimas por trimestre.
+        Plotly.newPlot("grafica-2", [{
+          type: "bar",
+          x: datosGraficas.trimestral.labels,
+          y: datosGraficas.trimestral.valores,
+          marker: { color: "#145b63" },
+          hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
+        }], {
+          ...BASE,
+          margin: { l: 50, r: 20, t: 10, b: 40 },
+          xaxis: { automargin: true },
+          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
+        }, CONFIG);
+
+        // Visualización 3: comparación año contra año (mismos meses).
+        Plotly.newPlot("grafica-3", [{
+          type: "bar",
+          x: datosGraficas.comparacion.anios.map(String),
+          y: datosGraficas.comparacion.valores,
+          marker: { color: "#00482B" },
+          hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
+        }], {
+          ...BASE,
+          margin: { l: 50, r: 20, t: 10, b: 40 },
+          xaxis: { automargin: true, type: "category" },
+          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
+        }, CONFIG);
+      })();
+    </script>
+  {% endif %}
 {% endblock %}
