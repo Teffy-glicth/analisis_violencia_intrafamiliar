@@ -1,10 +1,10 @@
 from flask import Flask, render_template, request
 
-from dimensiones.temporal import cargar_datos, contexto
+from dimensiones import multivariada as mv
 
 
 app = Flask(__name__)
-datos_temporales = cargar_datos()
+DATOS_MV = mv.cargar_datos()  # al iniciar se lee el CSV
 
 
 @app.route("/")
@@ -24,13 +24,13 @@ def territorial():
 
 @app.route("/temporal")
 def temporal():
-    datos = contexto(datos_temporales, request.args)
-    return render_template("temporal.html", **datos)
+    return render_template("temporal.html")
 
 
 @app.route("/multivariada")
 def multivariada():
-    return render_template("multivariada.html")
+    # Los filtros llegan en la URL (?departamento=...&anio=...); todo se calcula en dimensiones/multivariada.py
+    return render_template("multivariada.html", **mv.contexto(DATOS_MV, request.args))
 
 
 if __name__ == "__main__":
