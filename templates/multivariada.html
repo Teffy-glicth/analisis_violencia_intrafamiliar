@@ -2,11 +2,581 @@
 
 {% block title %}Dimensión relacional y multivariada | Violencia intrafamiliar{% endblock %}
 
+{% block head %}
+  {# Estilos temporales de la dimensión multivariada: quitar este bloque cuando el
+     responsable agregue los generales. #}
+  <style>
+    .mv-card {
+      height: 100%;
+      padding: 1.5rem;
+      border: 1px solid #e0e9e7;
+      border-radius: 1rem;
+      background: var(--surface);
+      box-shadow: 0 12px 32px rgb(24 51 59 / 5%);
+    }
+
+    .mv-card h3 {
+      margin-bottom: 1.25rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .mv-knowledge dt {
+      color: var(--brand);
+    }
+
+    .mv-knowledge dd {
+      margin-bottom: 0.75rem;
+    }
+
+    .mv-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    .mv-filters .form-select {
+      min-width: 14rem;
+    }
+
+    .mv-kpi-label {
+      margin-bottom: 0.25rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .mv-kpi-value {
+      margin-bottom: 0.25rem;
+      font-size: 2.25rem;
+      font-weight: 750;
+      line-height: 1.1;
+    }
+
+    .mv-kpi-note {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .mv-chart {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 22rem;
+      border: 1px dashed #c9d3d1;
+      border-radius: 0.75rem;
+      color: var(--muted);
+    }
+
+    .mv-chart.js-plotly-plot {
+      display: block;
+      border: 0;
+    }
+
+    .mv-interpretation {
+      margin-top: 1rem;
+      margin-bottom: 0;
+      padding-top: 1rem;
+      border-top: 1px solid #e0e9e7;
+    }
+  </style>
+{% endblock %}
+
+{# Formato colombiano: 91.955 y 73,9 %. Los datos llegan desde app.py (mv.contexto). #}
+{# c("clave"): cifra ya calculada en dimensiones/multivariada.py (cifras_conocimientos); «–» si no llegan datos. #}
+{% macro c(clave) %}{% if cifras is defined %}{{ cifras[clave] }}{% else %}–{% endif %}{% endmacro %}
+{% macro entero(valor) %}{{ "{:,}".format(valor) | replace(",", ".") }}{% endmacro %}
+{% macro pct(valor) %}{{ "%.1f" | format(valor) | replace(".", ",") }} %{% endmacro %}
+
 {% block content %}
   <section class="construction-panel">
     <p class="eyebrow">Análisis de datos</p>
     <h1>Dimensión relacional y multivariada</h1>
-    <p class="lead">Esta dimensión está en construcción.</p>
-    <p>Aquí se explorarán las relaciones entre las distintas variables del conjunto de datos.</p>
+    <p class="lead">
+      ¿Qué diferencias o relaciones evidentes pueden identificarse al analizar
+      conjuntamente tres o más variables?
+    </p>
+    {% if resumen is defined %}
+      <p class="text-secondary mb-0">
+        Periodo: {{ resumen.fecha_inicial.strftime("%d/%m/%Y") }} – {{ resumen.fecha_final.strftime("%d/%m/%Y") }}
+        · {{ entero(resumen.registros) }} registros · {{ entero(resumen.victimas) }} víctimas
+        (suma de CANTIDAD) · {{ resumen.departamentos }} departamentos · {{ entero(resumen.municipios) }} municipios.
+      </p>
+    {% endif %}
   </section>
+
+  <section class="mb-5" aria-labelledby="preguntas-heading">
+    <h2 id="preguntas-heading" class="section-heading">Preguntas de análisis</h2>
+    <div class="table-responsive mv-card">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Pregunta</th>
+            <th scope="col">Variables cruzadas</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">P1</th>
+            <td>¿Qué combinaciones de género, grupo etario y arma o medio concentran más víctimas, y cambia la relación entre género y edad?</td>
+            <td>GENERO × GRUPO ETARIO × ARMAS MEDIOS × CANTIDAD</td>
+          </tr>
+          <tr>
+            <th scope="row">P2</th>
+            <td>¿El uso de armas o medios (contundentes, arma blanca, arma de fuego) se comporta igual en todos los departamentos?</td>
+            <td>DEPARTAMENTO × ARMAS MEDIOS × GENERO × CANTIDAD</td>
+          </tr>
+          <tr>
+            <th scope="row">P3</th>
+            <td>¿Hay territorios o periodos con un comportamiento particular o inusual en el registro?</td>
+            <td>DEPARTAMENTO × GRUPO ETARIO × FECHA HECHO × CANTIDAD</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="variables-heading">
+    <h2 id="variables-heading" class="section-heading">Variables utilizadas</h2>
+    <div class="table-responsive mv-card">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">Variable</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Uso en la dimensión</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>DEPARTAMENTO</td><td>Categórica territorial</td><td>Comparar grupos territoriales; filtro</td></tr>
+          <tr><td>ARMAS MEDIOS</td><td>Categórica</td><td>Tipo de agresión; se agrupa en «sin arma» y «con arma o medio»</td></tr>
+          <tr><td>FECHA HECHO</td><td>Temporal</td><td>Año y mes; filtro de periodo y detección de meses atípicos</td></tr>
+          <tr><td>GENERO</td><td>Categórica</td><td>Diferencias según el género de la víctima</td></tr>
+          <tr><td>GRUPO ETARIO</td><td>Categórica</td><td>Menores, adolescentes y adultos</td></tr>
+          <tr><td>CANTIDAD</td><td>Numérica</td><td>Número de víctimas; siempre se suma, nunca se cuentan filas</td></tr>
+        </tbody>
+      </table>
+      <p class="text-secondary small mt-3 mb-0">
+        Variables derivadas: AÑO, MES y CON ARMA (ARMAS MEDIOS distinto de «SIN EMPLEO DE ARMAS»).
+        {% if resumen is defined %}
+          Los vacíos de GENERO ({{ entero(resumen.victimas_sin_genero) }} víctimas),
+          GRUPO ETARIO ({{ entero(resumen.victimas_sin_grupo_etario) }}) y MUNICIPIO
+          ({{ resumen.registros_sin_municipio }} registros) se muestran como «No reporta».
+        {% else %}
+          Los vacíos de GENERO, GRUPO ETARIO y MUNICIPIO se muestran como «No reporta».
+        {% endif %}
+      </p>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="tablero-heading">
+    <h2 id="tablero-heading" class="section-heading">Tablero de control</h2>
+
+    <div class="mv-card mb-4">
+      {# Formulario GET: al cambiar un filtro se recarga la página con ?departamento=...&anio=... #}
+      <form id="filtros-mv" class="mv-filters" method="get" action="{{ url_for('multivariada') }}" aria-label="Filtros del tablero">
+        <div>
+          <label for="filtro-departamento" class="form-label fw-semibold">Departamento</label>
+          <select id="filtro-departamento" name="departamento" class="form-select">
+            <option value="">Todos los departamentos</option>
+            {% if filtros %}
+              {% for departamento in filtros.departamentos %}
+                <option value="{{ departamento }}" {% if departamento == filtros.departamento %}selected{% endif %}>{{ departamento }}</option>
+              {% endfor %}
+            {% endif %}
+          </select>
+        </div>
+        <div>
+          <label for="filtro-anio" class="form-label fw-semibold">Año</label>
+          <select id="filtro-anio" name="anio" class="form-select">
+            <option value="">2025 y 2026</option>
+            {% if filtros %}
+              {% for anio in filtros.anios %}
+                <option value="{{ anio }}" {% if anio == filtros.anio %}selected{% endif %}>{{ anio }}{% if anio == 2026 %} (enero a julio){% endif %}</option>
+              {% endfor %}
+            {% endif %}
+          </select>
+        </div>
+        <noscript><button type="submit" class="btn btn-outline-secondary">Aplicar</button></noscript>
+        {% if filtros and (filtros.departamento or filtros.anio) %}
+          <a class="btn btn-link" href="{{ url_for('multivariada') }}">Quitar filtros</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="mv-card">
+          <p class="mv-kpi-label">Víctimas mujeres</p>
+          {% if indicadores %}
+            <p id="kpi-mujeres" class="mv-kpi-value">{{ pct(indicadores.pct_mujeres) }}</p>
+            <p id="kpi-mujeres-nota" class="mv-kpi-note">
+              {{ entero(indicadores.mujeres) }} de {{ entero(indicadores.victimas) }} víctimas
+            </p>
+          {% else %}
+            <p id="kpi-mujeres" class="mv-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="mv-card">
+          <p class="mv-kpi-label">Víctimas con arma o medio</p>
+          {% if indicadores %}
+            <p id="kpi-arma" class="mv-kpi-value">{{ pct(indicadores.pct_con_arma) }}</p>
+            <p id="kpi-arma-nota" class="mv-kpi-note">
+              {{ entero(indicadores.con_arma) }} víctimas con contundentes, arma blanca o arma de fuego
+            </p>
+          {% else %}
+            <p id="kpi-arma" class="mv-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="mv-card">
+          <p class="mv-kpi-label">Peso de la combinación principal</p>
+          {% if indicadores %}
+            <p id="kpi-combinacion" class="mv-kpi-value">{{ pct(indicadores.pct_combinacion_principal) }}</p>
+            <p id="kpi-combinacion-nota" class="mv-kpi-note">
+              {{ indicadores.combinacion_principal | capitalize }}
+              ({{ entero(indicadores.victimas_combinacion_principal) }} víctimas)
+            </p>
+          {% else %}
+            <p id="kpi-combinacion" class="mv-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>1. Combinaciones de género, grupo etario y arma o medio con más víctimas</h3>
+          <div id="grafica-1" class="mv-chart" style="height: 460px" role="img"
+               aria-label="Barras horizontales con las diez combinaciones de género, grupo etario y arma o medio con más víctimas">
+            {% if not graficas %}Gráfica 1{% endif %}
+          </div>
+          <p class="mv-interpretation">
+            <strong>Interpretación:</strong>
+            {% if interpretaciones %}{{ interpretaciones.combinaciones }}{% endif %}
+          </p>
+        </article>
+      </div>
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>2. Porcentaje de mujeres víctimas por grupo etario y arma o medio</h3>
+          <div id="grafica-2" class="mv-chart" style="height: 380px" role="img"
+               aria-label="Mapa de calor del porcentaje de mujeres víctimas según grupo etario y arma o medio">
+            {% if not graficas %}Gráfica 2{% endif %}
+          </div>
+          <p class="mv-interpretation">
+            <strong>Interpretación:</strong>
+            {% if interpretaciones %}{{ interpretaciones.mujeres }}{% endif %}
+          </p>
+        </article>
+      </div>
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>3. Arma o medio registrado por departamento</h3>
+          <div id="grafica-3" class="mv-chart" style="height: 820px" role="img"
+               aria-label="Barras apiladas al 100 % con la distribución de víctimas por arma o medio en cada departamento">
+            {% if not graficas %}Gráfica 3{% endif %}
+          </div>
+          <p class="mv-interpretation">
+            <strong>Interpretación:</strong>
+            {% if interpretaciones %}{{ interpretaciones.departamentos }}{% endif %}
+            Esta gráfica compara todos los departamentos (solo la filtra el año) y resalta el departamento elegido.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="conocimientos-heading">
+    <h2 id="conocimientos-heading" class="section-heading">Conocimientos evidentes</h2>
+    <p class="text-secondary">Cifras calculadas con todos los datos (enero de 2025 a julio de 2026); no cambian con los filtros.</p>
+    <div class="row g-4">
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>1. La brecha de género depende de la edad</h3>
+          <dl class="mv-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿La proporción de mujeres víctimas es igual en todos los grupos etarios y medios?</dd>
+            <dt>Variables</dt>
+            <dd>GENERO, GRUPO ETARIO, ARMAS MEDIOS, CANTIDAD.</dd>
+            <dt>Procedimiento</dt>
+            <dd>Suma de CANTIDAD por las tres variables y porcentaje de cada género dentro de cada grupo etario.</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              Mujeres víctimas: adultos {{ c("mujeres_adultos") }}, adolescentes {{ c("mujeres_adolescentes") }},
+              menores {{ c("mujeres_menores") }} (hombres {{ c("hombres_menores") }}).
+              La combinación «femenino · adultos · sin armas» reúne el {{ c("combinacion_principal") }} de las
+              víctimas y las tres primeras combinaciones suman el {{ c("tres_combinaciones") }}.
+            </dd>
+            <dt>Hallazgo</dt>
+            <dd>
+              En adultos hay {{ c("razon_adultos") }} mujeres víctimas por cada hombre; en menores, {{ c("razon_menores") }}.
+              En menores también baja el uso de contundentes ({{ c("contundentes_menores") }} frente a
+              {{ c("contundentes_adultos") }} en adultos).
+            </dd>
+            <dt>Interpretación</dt>
+            <dd>La violencia contra adultos tiene un fuerte sesgo de género, mientras que contra niños y niñas afecta a ambos sexos de forma parecida.</dd>
+            <dt>Utilidad</dt>
+            <dd>Justifica rutas diferenciadas: enfoque de género para mujeres adultas y protección infantil para ambos sexos.</dd>
+            <dt>Limitación</dt>
+            <dd>No se conoce el parentesco entre agresor y víctima; no puede afirmarse que se trate de violencia de pareja.</dd>
+          </dl>
+        </article>
+      </div>
+
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>2. El registro de armas o medios varía de forma extrema por departamento</h3>
+          <dl class="mv-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿El porcentaje de víctimas agredidas con arma o medio es similar entre departamentos?</dd>
+            <dt>Variables</dt>
+            <dd>DEPARTAMENTO, ARMAS MEDIOS, GENERO, CANTIDAD.</dd>
+            <dt>Procedimiento</dt>
+            <dd>Porcentaje de víctimas por arma o medio y porcentaje de mujeres en cada departamento.</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              Contundentes, en los departamentos con al menos {{ c("minimo_departamento") }} víctimas:
+              {{ c("priorizados_con_valor") }}; frente a {{ c("casi_sin_contundentes") }}
+              (promedio nacional {{ c("contundentes_pais") }}). El porcentaje de mujeres se mantiene entre
+              {{ c("mujeres_depto_min") }} y {{ c("mujeres_depto_max") }}.
+            </dd>
+            <dt>Hallazgo</dt>
+            <dd>
+              El género se comporta parecido en todo el país, pero el porcentaje de contundentes va de
+              {{ c("contundentes_min") }} a {{ c("contundentes_max") }}. {{ c("departamento_mayor") }}
+              ({{ c("contundentes_mayor") }}) invierte el patrón nacional, donde el {{ c("sin_armas_pais") }}
+              de las víctimas no reporta armas.
+            </dd>
+            <dt>Interpretación</dt>
+            <dd>
+              Diferencias tan grandes entre departamentos vecinos (Quindío {{ c("contundentes_quindio") }} y
+              Risaralda {{ c("contundentes_risaralda") }}) sugieren que también influye la forma en que cada
+              seccional tipifica el medio.
+            </dd>
+            <dt>Utilidad</dt>
+            <dd>Priorizar {{ c("priorizados") }} en prevención de lesiones y estandarizar el diligenciamiento de ARMAS MEDIOS.</dd>
+            <dt>Limitación</dt>
+            <dd>No permite afirmar que la violencia sea más grave en esos departamentos; puede ser un efecto del registro.</dd>
+          </dl>
+        </article>
+      </div>
+
+      <div class="col-12">
+        <article class="mv-card">
+          <h3>3. Bogotá registra de forma agregada y concentra las víctimas menores de edad</h3>
+          <dl class="mv-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿Hay territorios cuyo registro se comporta distinto al resto?</dd>
+            <dt>Variables</dt>
+            <dd>DEPARTAMENTO, GRUPO ETARIO, FECHA HECHO, CANTIDAD y número de registros.</dd>
+            <dt>Procedimiento</dt>
+            <dd>Comparación entre número de registros, suma de víctimas y víctimas por registro; porcentaje de menores y adolescentes por departamento.</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              Bogotá tiene {{ c("bogota_registros") }} registros ({{ c("bogota_pct_registros") }}) pero
+              {{ c("bogota_victimas") }} víctimas ({{ c("bogota_pct_victimas") }}): {{ c("bogota_por_registro") }}
+              víctimas por registro frente a {{ c("resto_por_registro") }} en el resto del país.
+              {{ c("registros_grandes_bogota") }} de los {{ c("registros_grandes") }} registros con 50 o más
+              víctimas son de Bogotá (máximo {{ c("maximo_registro") }}). Menores y adolescentes:
+              {{ c("menores_bogota") }} en Bogotá y {{ c("menores_resto") }} en el resto; Bogotá reúne el
+              {{ c("menores_pais_en_bogota") }} de estas víctimas del país.
+            </dd>
+            <dt>Hallazgo</dt>
+            <dd>Bogotá consolida varias víctimas en una sola fila y su proporción de menores es más del doble que la del resto del país.</dd>
+            <dt>Interpretación</dt>
+            <dd>
+              Contar filas subestimaría a Bogotá unas {{ c("subestimacion_bogota") }} veces. La mayor proporción de
+              menores puede reflejar una mayor capacidad de denuncia (colegios, ICBF, comisarías).
+            </dd>
+            <dt>Utilidad</dt>
+            <dd>Comparar territorios con tasas y no con conteos, y fortalecer la detección de violencia contra menores fuera de Bogotá, donde podría haber subregistro.</dd>
+            <dt>Limitación</dt>
+            <dd>El conjunto no incluye población por departamento, por lo que no se pueden calcular tasas.</dd>
+          </dl>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="inusuales-heading">
+    <h2 id="inusuales-heading" class="section-heading">Posibles casos inusuales</h2>
+    <div class="mv-card">
+      <ul class="mb-0">
+        <li>
+          <strong>Diciembre de 2025:</strong> {{ c("diciembre") }} víctimas frente a entre {{ c("otros_meses_min") }}
+          y {{ c("otros_meses_max") }} en los demás meses. La cifra cae día a día ({{ c("diciembre_dia_1") }} el
+          día 1 y {{ c("diciembre_ultimo_dia") }} el día 31) y baja frente a noviembre en
+          {{ c("diciembre_departamentos_bajan") }} de {{ c("departamentos") }} departamentos, lo que apunta a una
+          carga incompleta de datos más que a una disminución real.
+        </li>
+        <li>
+          <strong>{{ c("departamento_mayor") }}:</strong> {{ c("contundentes_mayor") }} de víctimas con contundentes,
+          frente al {{ c("contundentes_pais") }} nacional.
+        </li>
+        <li><strong>Bogotá:</strong> registros de hasta {{ c("maximo_registro") }} víctimas en una sola fila.</li>
+        <li>
+          <strong>Enero a julio, 2026 frente a 2025:</strong> aumento en {{ c("interanual_alcance") }}
+          (mujeres adultas {{ c("interanual_mujeres_adultas") }}, menores masculinos
+          {{ c("interanual_menores_masculinos") }}).
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="row g-4 mb-5">
+    <section class="col-12 col-lg-6" aria-labelledby="limitacion-heading">
+      <div class="mv-card">
+        <h2 id="limitacion-heading" class="section-heading">Limitación del análisis</h2>
+        <p class="mb-0">
+          Los datos son denuncias registradas por la Policía, no la totalidad de los hechos de violencia
+          intrafamiliar. La forma de registro cambia entre territorios y periodos: Bogotá agrupa en promedio
+          {{ c("bogota_por_registro") }} víctimas por fila frente a {{ c("resto_por_registro") }} en el resto del
+          país, el campo ARMAS MEDIOS se diligencia de forma muy distinta entre departamentos y diciembre de 2025
+          ({{ c("diciembre") }} víctimas) parece incompleto. Además, el conjunto no incluye población, por lo que no
+          se pueden calcular tasas. Las relaciones encontradas describen el registro; no demuestran causas.
+        </p>
+      </div>
+    </section>
+    <section class="col-12 col-lg-6" aria-labelledby="decision-heading">
+      <div class="mv-card">
+        <h2 id="decision-heading" class="section-heading">Decisión sustentada en los datos</h2>
+        <p class="mb-0">
+          Enfocar las campañas de prevención en <strong>mujeres adultas</strong>, que suman el
+          {{ c("mujeres_adultas_sin_armas_y_contundentes") }} de las víctimas entre las agredidas sin armas y con
+          contundentes, y priorizar <strong>{{ c("priorizados") }}</strong>, los departamentos con mayor porcentaje
+          de víctimas de objetos contundentes (entre los que tienen al menos {{ c("minimo_departamento") }} víctimas), para intervenciones contra ese tipo de agresión. Antes de asignar
+          recursos definitivos, auditar con la Policía el diligenciamiento del campo ARMAS MEDIOS y la carga de
+          diciembre de 2025.
+        </p>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {% if graficas %}
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+    <script>
+      // Los datos ya vienen calculados desde dimensiones/multivariada.py; aquí solo se dibujan.
+      (function () {
+        const graficas = {{ graficas | tojson }};
+        const departamentoElegido = {{ filtros.departamento | tojson }};
+
+        const NOMBRES_ARMAS = {
+          "CONTUNDENTES": "Contundentes",
+          "ARMA BLANCA / CORTOPUNZANTE": "Arma blanca / cortopunzante",
+          "ARMA DE FUEGO": "Arma de fuego",
+          "SIN EMPLEO DE ARMAS": "Sin empleo de armas",
+        };
+        const CORTOS_ARMAS = {
+          "CONTUNDENTES": "Contun-<br>dentes",
+          "ARMA BLANCA / CORTOPUNZANTE": "Arma<br>blanca",
+          "ARMA DE FUEGO": "Arma<br>de fuego",
+          "SIN EMPLEO DE ARMAS": "Sin<br>armas",
+        };
+        const COLORES_ARMAS = {
+          "CONTUNDENTES": "#2a78d6",
+          "ARMA BLANCA / CORTOPUNZANTE": "#eb6834",
+          "ARMA DE FUEGO": "#1baf7a",
+          "SIN EMPLEO DE ARMAS": "#c9d3d1",
+        };
+        const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
+        const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
+        const CONFIG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] };
+        const capitalizar = (texto) => texto.charAt(0) + texto.slice(1).toLowerCase();
+        const pct = (valor) => valor.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %";
+
+        // Los filtros recargan la página al cambiar.
+        document.querySelectorAll("#filtros-mv select").forEach((select) => {
+          select.addEventListener("change", () => select.form.submit());
+        });
+
+        // Visualización 1: combinaciones con más víctimas.
+        const combinaciones = graficas.combinaciones.slice().reverse();
+        Plotly.newPlot("grafica-1", [{
+          type: "bar",
+          orientation: "h",
+          x: combinaciones.map((c) => c.victimas),
+          y: combinaciones.map((c) => c.etiqueta.replace(/ · (?=[^·]*$)/, "<br>")),
+          text: combinaciones.map((c) => pct(c.porcentaje)),
+          textposition: "outside",
+          cliponaxis: false,
+          marker: { color: "#145b63" },
+          customdata: combinaciones.map((c) => [c.etiqueta, pct(c.porcentaje)]),
+          hovertemplate: "%{customdata[0]}<br>%{x:,} víctimas (%{customdata[1]})<extra></extra>",
+        }], {
+          ...BASE,
+          margin: { l: 10, r: 60, t: 10, b: 40 },
+          xaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false, ticklabelstandoff: 6 },
+          yaxis: { automargin: true, ticklabelstandoff: 10 },
+        }, CONFIG);
+
+        // Visualización 2: % de mujeres por grupo etario y arma o medio.
+        const mujeres = graficas.mujeres;
+        Plotly.newPlot("grafica-2", [{
+          type: "heatmap",
+          x: mujeres.armas.map((a) => CORTOS_ARMAS[a]),
+          y: mujeres.grupos.map(capitalizar),
+          z: mujeres.celdas.map((fila) => fila.map((c) => (c.confiable ? c.porcentaje : null))),
+          text: mujeres.celdas.map((fila) => fila.map((c) => (c.confiable ? Math.round(c.porcentaje) + " %" : "n=" + c.victimas))),
+          customdata: mujeres.celdas.map((fila, i) => fila.map((c, j) =>
+            `${capitalizar(mujeres.grupos[i])} · ${NOMBRES_ARMAS[mujeres.armas[j]]}<br>` +
+            `${c.victimas ? pct(c.porcentaje) : "–"} mujeres · ${c.victimas.toLocaleString("es-CO")} víctimas` +
+            (c.confiable ? "" : "<br>Menos de 30 víctimas: porcentaje no confiable"))),
+          texttemplate: "%{text}",
+          hovertemplate: "%{customdata}<extra></extra>",
+          hoverongaps: false,
+          zmin: 40,
+          zmax: 90,
+          colorscale: [[0, "#cde2fb"], [0.5, "#3987e5"], [1, "#104281"]],
+          xgap: 2,
+          ygap: 2,
+          colorbar: { title: { text: "% mujeres", side: "right" }, ticksuffix: " %", thickness: 12 },
+        }], {
+          ...BASE,
+          plot_bgcolor: "#eef1f0",
+          margin: { l: 10, r: 10, t: 10, b: 10 },
+          xaxis: { automargin: true, tickangle: 0, ticklabelstandoff: 8 },
+          yaxis: { automargin: true, ticklabelstandoff: 10 },
+        }, CONFIG);
+
+        // Visualización 3: arma o medio por departamento (100 %), resaltando el departamento elegido.
+        const deptos = graficas.departamentos;
+        const orden = deptos.departamentos.slice().reverse();  // el mayor % con arma queda arriba
+        const indice = (d) => deptos.departamentos.indexOf(d);
+        const opacidad = orden.map((d) => (!departamentoElegido || d === departamentoElegido ? 1 : 0.35));
+        Plotly.newPlot("grafica-3", deptos.armas.map((arma) => ({
+          type: "bar",
+          orientation: "h",
+          name: NOMBRES_ARMAS[arma],
+          y: orden,
+          x: orden.map((d) => deptos.porcentajes[arma][indice(d)]),
+          customdata: orden.map((d) => deptos.victimas[indice(d)].toLocaleString("es-CO")),
+          marker: { color: COLORES_ARMAS[arma], opacity: opacidad, line: { color: "#ffffff", width: 1 } },
+          hovertemplate: "%{y}<br>" + NOMBRES_ARMAS[arma] + ": %{x:.1f} %<br>%{customdata} víctimas en el departamento<extra></extra>",
+        })), {
+          ...BASE,
+          barmode: "stack",
+          bargap: 0.2,
+          margin: { l: 10, r: 10, t: 70, b: 40 },
+          xaxis: { automargin: true, range: [0, 100], ticksuffix: " %", gridcolor: "#e1e0d9", title: { text: "% de víctimas del departamento", standoff: 12 }, ticklabelstandoff: 6 },
+          yaxis: {
+            automargin: true,
+            ticklabelstandoff: 10,
+            tickfont: { size: 11 },
+            tickvals: orden,
+            ticktext: orden.map((d) => (d === departamentoElegido ? `<b>${d}</b>` : d)),
+          },
+          legend: { orientation: "h", x: 0, y: 1.03, yanchor: "bottom", traceorder: "normal", itemwidth: 40 },
+        }, CONFIG);
+      })();
+    </script>
+  {% endif %}
 {% endblock %}
