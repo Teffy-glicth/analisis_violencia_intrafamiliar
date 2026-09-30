@@ -1,9 +1,13 @@
 from flask import Flask, render_template, request
 
+from dimensiones import poblacional as pb
+
 from dimensiones import multivariada as mv
 
 
 app = Flask(__name__)
+
+DATOS_PB = pb.cargar_datos()  
 DATOS_MV = mv.cargar_datos()  # al iniciar se lee el CSV
 
 
@@ -14,7 +18,7 @@ def index():
 
 @app.route("/poblacional")
 def poblacional():
-    return render_template("poblacional.html")
+    return render_template("poblacional.html", **pb.pagina(DATOS_PB, request.args))
 
 
 @app.route("/territorial")
