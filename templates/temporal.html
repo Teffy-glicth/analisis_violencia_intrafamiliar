@@ -3,7 +3,85 @@
 {% block title %}Dimensión temporal | Violencia intrafamiliar{% endblock %}
 
 {% block head %}
-  
+  {# Estilos temporales de la dimensión temporal: quitar este bloque cuando el
+     responsable agregue los generales (mismo criterio usado en multivariada). #}
+  <style>
+    .tp-card {
+      height: 100%;
+      padding: 1.5rem;
+      border: 1px solid #e0e9e7;
+      border-radius: 1rem;
+      background: var(--surface);
+      box-shadow: 0 12px 32px rgb(24 51 59 / 5%);
+    }
+
+    .tp-card h3 {
+      margin-bottom: 1.25rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .tp-knowledge dt {
+      color: var(--brand);
+    }
+
+    .tp-knowledge dd {
+      margin-bottom: 0.75rem;
+    }
+
+    .tp-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    .tp-filters .form-select,
+    .tp-filters .form-control {
+      min-width: 12rem;
+    }
+
+    .tp-kpi-label {
+      margin-bottom: 0.25rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .tp-kpi-value {
+      margin-bottom: 0.25rem;
+      font-size: 2.25rem;
+      font-weight: 750;
+      line-height: 1.1;
+    }
+
+    .tp-kpi-note {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .tp-chart {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 22rem;
+      border: 1px dashed #c9d3d1;
+      border-radius: 0.75rem;
+      color: var(--muted);
+    }
+
+    .tp-chart.js-plotly-plot {
+      display: block;
+      border: 0;
+    }
+
+    .tp-interpretation {
+      margin-top: 1rem;
+      margin-bottom: 0;
+      padding-top: 1rem;
+      border-top: 1px solid #e0e9e7;
+    }
+  </style>
 {% endblock %}
 
 {# Formato colombiano: 91.955 y 73,9 %. Los datos llegan desde app.py (tp.contexto). #}
@@ -56,17 +134,6 @@
       {# Formulario GET: al cambiar un filtro se recarga la página con ?anio=...&desde=...&hasta=... #}
       <form id="filtros-tp" class="tp-filters" method="get" action="{{ url_for('temporal') }}" aria-label="Filtros del tablero">
         <div>
-          <label for="filtro-anio" class="form-label fw-semibold">Año</label>
-          <select id="filtro-anio" name="anio" class="form-select">
-            <option value="">2025 y 2026</option>
-            {% if filtros %}
-              {% for anio in filtros.anios %}
-                <option value="{{ anio }}" {% if anio == filtros.anio %}selected{% endif %}>{{ anio }}{% if anio == 2026 %} (enero a julio){% endif %}</option>
-              {% endfor %}
-            {% endif %}
-          </select>
-        </div>
-        <div>
           <label for="filtro-desde" class="form-label fw-semibold">Desde</label>
           <input type="date" id="filtro-desde" name="desde" class="form-control" value="{{ filtros.desde if filtros else '' }}">
         </div>
@@ -74,11 +141,23 @@
           <label for="filtro-hasta" class="form-label fw-semibold">Hasta</label>
           <input type="date" id="filtro-hasta" name="hasta" class="form-control" value="{{ filtros.hasta if filtros else '' }}">
         </div>
+        <div>
+          <label for="filtro-granularidad" class="form-label fw-semibold">Agrupar por</label>
+          <select id="filtro-granularidad" name="granularidad" class="form-select">
+            <option value="mes" {% if not filtros or filtros.granularidad == "mes" %}selected{% endif %}>Mes</option>
+            <option value="trimestre" {% if filtros and filtros.granularidad == "trimestre" %}selected{% endif %}>Trimestre</option>
+          </select>
+        </div>
         <noscript><button type="submit" class="btn btn-outline-secondary">Aplicar</button></noscript>
-        {% if filtros and (filtros.anio or filtros.desde or filtros.hasta) %}
+        {% if filtros and (filtros.desde or filtros.hasta or filtros.granularidad == "trimestre") %}
           <a class="btn btn-link" href="{{ url_for('temporal') }}">Quitar filtros</a>
         {% endif %}
       </form>
+      <p class="text-secondary small mt-3 mb-0">
+        <strong>Desde / Hasta</strong> elige <em>qué periodo</em> se analiza (filtra los datos).
+        <strong>Agrupar por</strong> elige <em>cómo se presenta</em> ese periodo en la gráfica 1
+        (mes a mes o trimestre a trimestre) — no cambia qué datos entran al análisis, solo cómo se agrupan.
+      </p>
     </div>
 
     <div class="row g-4 mb-4">
@@ -124,27 +203,35 @@
     <div class="row g-4">
       <div class="col-12">
         <article class="tp-card">
-          <h3>1. Víctimas por mes</h3>
+          <h3>
+            1. Víctimas por periodo
+            <span class="tp-kpi-note" style="font-weight: 400;">
+              ({% if filtros and filtros.granularidad == "trimestre" %}vista trimestral{% else %}vista mensual{% endif %},
+              según el filtro «Agrupar por»)
+            </span>
+          </h3>
           <div id="grafica-1" class="tp-chart" style="height: 420px" role="img"
-               aria-label="Línea con las víctimas totales por mes entre enero de 2025 y julio de 2026">
+               aria-label="Víctimas totales por periodo, agrupadas por mes o por trimestre según el filtro elegido">
             {% if not graficas %}Gráfica 1{% endif %}
           </div>
           <p class="tp-interpretation">
-            <strong>Interpretación:</strong> permite ver la tendencia general mes a mes y detectar
-            caídas o picos puntuales de víctimas reportadas.
+            <strong>Interpretación:</strong> permite ver la tendencia general y detectar caídas o picos
+            puntuales. En vista trimestral es más fácil notar estacionalidad (ej. si un mismo trimestre
+            se repite como el más alto en ambos años); en vista mensual se ven los detalles mes a mes.
           </p>
         </article>
       </div>
       <div class="col-12">
         <article class="tp-card">
-          <h3>2. Víctimas por trimestre</h3>
+          <h3>2. Variación porcentual mes a mes</h3>
           <div id="grafica-2" class="tp-chart" style="height: 420px" role="img"
-               aria-label="Barras con las víctimas totales por trimestre y año">
+               aria-label="Barras con el cambio porcentual de víctimas de cada mes frente al mes anterior">
             {% if not graficas %}Gráfica 2{% endif %}
           </div>
           <p class="tp-interpretation">
-            <strong>Interpretación:</strong> agrupa los meses en trimestres para identificar
-            estacionalidad, por ejemplo si un mismo trimestre se repite como el más alto en ambos años.
+            <strong>Interpretación:</strong> muestra si cada mes subió o bajó frente al anterior (no el total
+            de víctimas, sino el ritmo de cambio), lo que ayuda a ver si un pico se formó de golpe o de forma
+            gradual. Este indicador siempre se calcula mes a mes, sin importar la vista elegida en la gráfica 1.
           </p>
         </article>
       </div>
@@ -283,11 +370,10 @@
 {% block scripts %}
   {% if graficas %}
     <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
-    <script id="datos-graficas-tp" type="application/json">{{ graficas | tojson }}</script>
     <script>
       // Los datos ya vienen calculados desde dimensiones/temporal.py; aquí solo se dibujan.
       (function () {
-        const datosGraficas = JSON.parse(document.getElementById("datos-graficas-tp").textContent);
+        const graficas = {{ graficas | tojson }};
 
         const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
         const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
@@ -298,13 +384,16 @@
           campo.addEventListener("change", () => campo.form.submit());
         });
 
-        // Visualización 1: víctimas por mes.
+        // Visualización 1: víctimas por periodo. El tipo de trazo cambia según
+        // el filtro «Agrupar por» (mes = línea; trimestre = barras), pero los
+        // datos los sigue decidiendo únicamente el rango de fechas.
+        const esTrimestre = graficas.periodo.granularidad === "trimestre";
         Plotly.newPlot("grafica-1", [{
-          type: "scatter",
-          mode: "lines+markers",
-          x: datosGraficas.mensual.labels,
-          y: datosGraficas.mensual.valores,
-          line: { color: "#145b63", width: 3 },
+          type: esTrimestre ? "bar" : "scatter",
+          mode: esTrimestre ? undefined : "lines+markers",
+          x: graficas.periodo.labels,
+          y: graficas.periodo.valores,
+          line: esTrimestre ? undefined : { color: "#145b63", width: 3 },
           marker: { color: "#145b63" },
           hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
         }], {
@@ -314,25 +403,27 @@
           yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
         }, CONFIG);
 
-        // Visualización 2: víctimas por trimestre.
+        // Visualización 2: variación porcentual mes a mes (siempre mensual,
+        // sin importar la vista elegida en la gráfica 1). Verde si sube,
+        // naranja si baja.
         Plotly.newPlot("grafica-2", [{
           type: "bar",
-          x: datosGraficas.trimestral.labels,
-          y: datosGraficas.trimestral.valores,
-          marker: { color: "#145b63" },
-          hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
+          x: graficas.variacion.labels,
+          y: graficas.variacion.valores,
+          marker: { color: graficas.variacion.valores.map((v) => (v >= 0 ? "#1baf7a" : "#eb6834")) },
+          hovertemplate: "%{x}<br>%{y:+.1f} % frente al mes anterior<extra></extra>",
         }], {
           ...BASE,
           margin: { l: 50, r: 20, t: 10, b: 40 },
           xaxis: { automargin: true },
-          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
+          yaxis: { automargin: true, title: { text: "Variación %", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: true, ticksuffix: " %" },
         }, CONFIG);
 
         // Visualización 3: comparación año contra año (mismos meses).
         Plotly.newPlot("grafica-3", [{
           type: "bar",
-          x: datosGraficas.comparacion.anios.map(String),
-          y: datosGraficas.comparacion.valores,
+          x: graficas.comparacion.anios.map(String),
+          y: graficas.comparacion.valores,
           marker: { color: "#00482B" },
           hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
         }], {

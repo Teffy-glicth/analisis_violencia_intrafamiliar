@@ -11,9 +11,8 @@ from pathlib import Path
 
 import pandas as pd
 
-# Ruta absoluta para que funcione sin importar desde qué carpeta se ejecute Flask.
+
 RUTA = Path(__file__).resolve().parent.parent / "data" / "violencia_intrafamiliar.csv"
-ANIOS = [2025, 2026]
 
 
 def cargar_datos(ruta=RUTA):
@@ -39,18 +38,29 @@ def resumen_general(df):
 # --- Tablero: filtros, datos de las gráficas e indicadores ---
 
 
+GRANULARIDADES = {"mes", "trimestre"}
+
+
 def leer_filtros(parametros):
-    """Valida los filtros recibidos en la URL (?anio=...&desde=...&hasta=...)."""
-    anio = parametros.get("anio") or None
-    anio = int(anio) if anio in {str(a) for a in ANIOS} else None
+    """Valida los filtros recibidos en la URL (?desde=...&hasta=...&granularidad=...).
+
+    Los dos filtros resuelven preguntas distintas y no se solapan:
+      - desde/hasta: QUÉ periodo se analiza (antes había además un selector de
+        año, pero se quitó porque dejaba elegir el mismo periodo de dos formas
+        distintas — observación de revisión del PR).
+      - granularidad: CÓMO se agrupa ese periodo en la gráfica principal
+        (mes a mes o trimestre a trimestre). No cambia qué datos entran al
+        análisis, solo cómo se presentan.
+    """
     desde = parametros.get("desde") or None
     hasta = parametros.get("hasta") or None
-    return anio, desde, hasta
+    granularidad = parametros.get("granularidad") or "mes"
+    if granularidad not in GRANULARIDADES:
+        granularidad = "mes"
+    return desde, hasta, granularidad
 
 
-def filtrar(df, anio=None, desde=None, hasta=None):
-    if anio:
-        df = df[df["AÑO"] == anio]
+def filtrar(df, desde=None, hasta=None):
     if desde:
         df = df[df["FECHA HECHO"] >= pd.to_datetime(desde)]
     if hasta:
@@ -101,6 +111,30 @@ def datos_trimestral(df):
     return {"labels": tabla["ETIQUETA"].tolist(), "valores": [int(v) for v in tabla["CANTIDAD"]]}
 
 
+def datos_periodo(df, granularidad="mes"):
+    """Visualización 1: víctimas por periodo, agrupadas por mes o por trimestre
+    según el filtro de granularidad (no según el rango de fechas)."""
+    if granularidad == "trimestre":
+        base = datos_trimestral(df)
+    else:
+        base = datos_mensual(df)
+    return {**base, "granularidad": granularidad}
+
+
+def datos_variacion(df):
+    """Visualización 2 (nueva): variación porcentual mes a mes dentro del
+    periodo filtrado. El primer mes del rango no tiene mes anterior con el
+    que compararse, así que se omite."""
+    serie = serie_mensual(df)
+    if len(serie) < 2:
+        return {"labels": [], "valores": []}
+    variacion = serie["VICTIMAS"].pct_change().mul(100).iloc[1:]
+    return {
+        "labels": serie["PERIODO"].iloc[1:].tolist(),
+        "valores": [round(float(v), 1) for v in variacion],
+    }
+
+
 def datos_comparacion(df_completo):
     tabla, comunes = comparacion_anual(df_completo)
     return {
@@ -148,15 +182,15 @@ def victimas_por_dia(df, mes="2025-12"):
 
 def contexto(df, parametros):
     """Todo lo que necesita la plantilla temporal.html, según los filtros de la URL."""
-    anio, desde, hasta = leer_filtros(parametros)
-    datos = filtrar(df, anio, desde, hasta)
+    desde, hasta, granularidad = leer_filtros(parametros)
+    datos = filtrar(df, desde, hasta)
     return {
         "resumen": resumen_general(df),
         "indicadores": indicadores(datos, df_completo=df) if len(datos) else None,
-        "filtros": {"anio": anio, "desde": desde, "hasta": hasta, "anios": ANIOS},
+        "filtros": {"desde": desde, "hasta": hasta, "granularidad": granularidad},
         "graficas": {
-            "mensual": datos_mensual(datos),
-            "trimestral": datos_trimestral(datos),
+            "periodo": datos_periodo(datos, granularidad),
+            "variacion": datos_variacion(datos),
             "comparacion": datos_comparacion(df),
         },
     }
