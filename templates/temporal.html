@@ -294,8 +294,7 @@
     <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
     <script>
       // Los datos ya vienen calculados desde dimensiones/temporal.py; aquí solo se dibujan.
-      (function () {
-        const graficas = {{ graficas | tojson }};
+      const datosGraficas = {{ graficas | tojson }};
 
         const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
         const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
@@ -309,12 +308,12 @@
         // Visualización 1: víctimas por periodo. El tipo de trazo cambia según
         // el filtro «Agrupar por» (mes = línea; trimestre = barras), pero los
         // datos los sigue decidiendo únicamente el rango de fechas.
-        const esTrimestre = graficas.periodo.granularidad === "trimestre";
+        const esTrimestre = datosGraficas.periodo.granularidad === "trimestre";
         Plotly.newPlot("grafica-1", [{
           type: esTrimestre ? "bar" : "scatter",
           mode: esTrimestre ? undefined : "lines+markers",
-          x: graficas.periodo.labels,
-          y: graficas.periodo.valores,
+          x: datosGraficas.periodo.labels,
+          y: datosGraficas.periodo.valores,
           line: esTrimestre ? undefined : { color: "#145b63", width: 3 },
           marker: { color: "#145b63" },
           hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
@@ -330,9 +329,9 @@
         // naranja si baja.
         Plotly.newPlot("grafica-2", [{
           type: "bar",
-          x: graficas.variacion.labels,
-          y: graficas.variacion.valores,
-          marker: { color: graficas.variacion.valores.map((v) => (v >= 0 ? "#1baf7a" : "#eb6834")) },
+          x: datosGraficas.variacion.labels,
+          y: datosGraficas.variacion.valores,
+          marker: { color: datosGraficas.variacion.valores.map((v) => (v >= 0 ? "#1baf7a" : "#eb6834")) },
           hovertemplate: "%{x}<br>%{y:+.1f} % frente al mes anterior<extra></extra>",
         }], {
           ...BASE,
@@ -344,8 +343,8 @@
         // Visualización 3: comparación año contra año (mismos meses).
         Plotly.newPlot("grafica-3", [{
           type: "bar",
-          x: graficas.comparacion.anios.map(String),
-          y: graficas.comparacion.valores,
+          x: datosGraficas.comparacion.anios.map(String),
+          y: datosGraficas.comparacion.valores,
           marker: { color: "#00482B" },
           hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
         }], {
@@ -354,7 +353,6 @@
           xaxis: { automargin: true, type: "category" },
           yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
         }, CONFIG);
-      })();
     </script>
   {% endif %}
 {% endblock %}
