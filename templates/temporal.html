@@ -292,9 +292,10 @@
 {% block scripts %}
   {% if graficas %}
     <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+    <script type="application/json" id="datos-graficas">{{ graficas | tojson | safe }}</script>
     <script>
       // Los datos ya vienen calculados desde dimensiones/temporal.py; aquí solo se dibujan.
-      const datosGraficas = {{ graficas | tojson }};
+      const datosGraficas = JSON.parse(document.getElementById("datos-graficas").textContent);
 
         const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
         const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
