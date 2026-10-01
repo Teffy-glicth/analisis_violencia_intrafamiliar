@@ -2,11 +2,357 @@
 
 {% block title %}Dimensión temporal | Violencia intrafamiliar{% endblock %}
 
+{% block head %}
+  
+{% endblock %}
+
+{# Formato colombiano: 91.955 y 73,9 %. Los datos llegan desde app.py (tp.contexto). #}
+{% macro entero(valor) %}{{ "{:,}".format(valor) | replace(",", ".") }}{% endmacro %}
+{% macro pct(valor) %}{{ "%.1f" | format(valor) | replace(".", ",") }} %{% endmacro %}
+
 {% block content %}
   <section class="construction-panel">
     <p class="eyebrow">Análisis de datos</p>
     <h1>Dimensión temporal</h1>
-    <p class="lead">Esta dimensión está en construcción.</p>
-    <p>Aquí se analizará el comportamiento de los registros a través del tiempo.</p>
+    <p class="lead">
+      ¿Cómo ha cambiado el número de víctimas de violencia intrafamiliar durante
+      el periodo disponible?
+    </p>
+    {% if resumen is defined %}
+      <p class="text-secondary mb-0">
+        Periodo: {{ resumen.fecha_inicial.strftime("%d/%m/%Y") }} – {{ resumen.fecha_final.strftime("%d/%m/%Y") }}
+        · {{ entero(resumen.registros) }} registros · {{ entero(resumen.victimas) }} víctimas
+        (suma de CANTIDAD).
+      </p>
+    {% endif %}
   </section>
+
+  <section class="mb-5" aria-labelledby="variables-heading">
+    <h2 id="variables-heading" class="section-heading">Variables utilizadas</h2>
+    <div class="table-responsive tp-card">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">Variable</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Uso en la dimensión</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>FECHA HECHO</td><td>Temporal</td><td>Se derivan AÑO, MES y TRIMESTRE; base de las 3 visualizaciones y de los 2 filtros</td></tr>
+          <tr><td>CANTIDAD</td><td>Numérica</td><td>Número de víctimas; siempre se suma, nunca se cuentan filas</td></tr>
+        </tbody>
+      </table>
+      <p class="text-secondary small mt-3 mb-0">
+        Variables derivadas: AÑO, MES (año-mes) y TRIMESTRE, obtenidas de FECHA HECHO.
+      </p>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="tablero-heading">
+    <h2 id="tablero-heading" class="section-heading">Tablero de control</h2>
+
+    <div class="tp-card mb-4">
+      {# Formulario GET: al cambiar un filtro se recarga la página con ?anio=...&desde=...&hasta=... #}
+      <form id="filtros-tp" class="tp-filters" method="get" action="{{ url_for('temporal') }}" aria-label="Filtros del tablero">
+        <div>
+          <label for="filtro-desde" class="form-label fw-semibold">Desde</label>
+          <input type="date" id="filtro-desde" name="desde" class="form-control" value="{{ filtros.desde if filtros else '' }}">
+        </div>
+        <div>
+          <label for="filtro-hasta" class="form-label fw-semibold">Hasta</label>
+          <input type="date" id="filtro-hasta" name="hasta" class="form-control" value="{{ filtros.hasta if filtros else '' }}">
+        </div>
+        <div>
+          <label for="filtro-granularidad" class="form-label fw-semibold">Agrupar por</label>
+          <select id="filtro-granularidad" name="granularidad" class="form-select">
+            <option value="mes" {% if not filtros or filtros.granularidad == "mes" %}selected{% endif %}>Mes</option>
+            <option value="trimestre" {% if filtros and filtros.granularidad == "trimestre" %}selected{% endif %}>Trimestre</option>
+          </select>
+        </div>
+        <noscript><button type="submit" class="btn btn-outline-secondary">Aplicar</button></noscript>
+        {% if filtros and (filtros.desde or filtros.hasta or filtros.granularidad == "trimestre") %}
+          <a class="btn btn-link" href="{{ url_for('temporal') }}">Quitar filtros</a>
+        {% endif %}
+      </form>
+      <p class="text-secondary small mt-3 mb-0">
+        <strong>Desde / Hasta</strong> elige <em>qué periodo</em> se analiza (filtra los datos).
+        <strong>Agrupar por</strong> elige <em>cómo se presenta</em> ese periodo en la gráfica 1
+        (mes a mes o trimestre a trimestre) — no cambia qué datos entran al análisis, solo cómo se agrupan.
+      </p>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="tp-card">
+          <p class="tp-kpi-label">Total de víctimas (filtro aplicado)</p>
+          {% if indicadores %}
+            <p id="kpi-total" class="tp-kpi-value">{{ entero(indicadores.victimas) }}</p>
+            <p class="tp-kpi-note">Suma de CANTIDAD en el rango seleccionado</p>
+          {% else %}
+            <p id="kpi-total" class="tp-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="tp-card">
+          <p class="tp-kpi-label">Variación del último mes</p>
+          {% if indicadores and indicadores.variacion_ultimo_mes is not none %}
+            <p id="kpi-variacion" class="tp-kpi-value">{{ pct(indicadores.variacion_ultimo_mes) }}</p>
+            <p class="tp-kpi-note">Frente al mes inmediatamente anterior</p>
+          {% else %}
+            <p id="kpi-variacion" class="tp-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="tp-card">
+          <p class="tp-kpi-label">Mes pico / mes valle</p>
+          {% if indicadores and indicadores.mes_pico and indicadores.mes_valle %}
+            <p id="kpi-pico" class="tp-kpi-value" style="font-size:1.4rem;">
+              {{ indicadores.mes_pico.periodo }} ({{ entero(indicadores.mes_pico.victimas) }})
+            </p>
+            <p class="tp-kpi-note">
+              Valle: {{ indicadores.mes_valle.periodo }} ({{ entero(indicadores.mes_valle.victimas) }})
+            </p>
+          {% else %}
+            <p id="kpi-pico" class="tp-kpi-value">–</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-12">
+        <article class="tp-card">
+          <h3>
+            1. Víctimas por periodo
+            <span class="tp-kpi-note" style="font-weight: 400;">
+              ({% if filtros and filtros.granularidad == "trimestre" %}vista trimestral{% else %}vista mensual{% endif %},
+              según el filtro «Agrupar por»)
+            </span>
+          </h3>
+          <div id="grafica-1" class="tp-chart" style="height: 420px" role="img"
+               aria-label="Víctimas totales por periodo, agrupadas por mes o por trimestre según el filtro elegido">
+            {% if not graficas %}Gráfica 1{% endif %}
+          </div>
+          <p class="tp-interpretation">
+            <strong>Interpretación:</strong> permite ver la tendencia general y detectar caídas o picos
+            puntuales. En vista trimestral es más fácil notar estacionalidad (ej. si un mismo trimestre
+            se repite como el más alto en ambos años); en vista mensual se ven los detalles mes a mes.
+          </p>
+        </article>
+      </div>
+      <div class="col-12">
+        <article class="tp-card">
+          <h3>2. Variación porcentual mes a mes</h3>
+          <div id="grafica-2" class="tp-chart" style="height: 420px" role="img"
+               aria-label="Barras con el cambio porcentual de víctimas de cada mes frente al mes anterior">
+            {% if not graficas %}Gráfica 2{% endif %}
+          </div>
+          <p class="tp-interpretation">
+            <strong>Interpretación:</strong> muestra si cada mes subió o bajó frente al anterior (no el total
+            de víctimas, sino el ritmo de cambio), lo que ayuda a ver si un pico se formó de golpe o de forma
+            gradual. Este indicador siempre se calcula mes a mes, sin importar la vista elegida en la gráfica 1.
+          </p>
+        </article>
+      </div>
+      <div class="col-12">
+        <article class="tp-card">
+          <h3>3. Comparación año contra año</h3>
+          <div id="grafica-3" class="tp-chart" style="height: 420px" role="img"
+               aria-label="Barras comparando el total de víctimas de 2025 y 2026 en los mismos meses">
+            {% if not graficas %}Gráfica 3{% endif %}
+          </div>
+          <p class="tp-interpretation">
+            <strong>Interpretación:</strong> compara únicamente los meses presentes en todos los años
+            del conjunto de datos
+            {% if graficas %}({{ graficas.comparacion.meses_comunes | length }} meses comunes){% endif %},
+            para no comparar un año completo contra uno incompleto.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-5" aria-labelledby="conocimientos-heading">
+    <h2 id="conocimientos-heading" class="section-heading">Conocimientos evidentes</h2>
+    <div class="row g-4">
+
+      <div class="col-12">
+        <article class="tp-card">
+          <h3>1. La violencia intrafamiliar sigue un patrón estacional</h3>
+          <dl class="tp-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿Existen meses o trimestres que se repiten sistemáticamente como los más altos?</dd>
+            <dt>Variables</dt>
+            <dd>FECHA HECHO (AÑO, MES, TRIMESTRE), CANTIDAD.</dd>
+            <dt>Procedimiento</dt>
+            <dd>Suma de CANTIDAD agrupada por mes y por trimestre-año.</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              El tercer trimestre es el más alto en ambos años con datos completos (Q3-2025: 42.119 víctimas,
+              el más alto de 2025). El mes pico del periodo es marzo de 2026 (15.072) y el valle es
+              diciembre de 2025 (6.528).
+            </dd>
+            <dt>Hallazgo</dt>
+            <dd>Julio-septiembre concentra sistemáticamente más casos que el resto del año.</dd>
+            <dt>Interpretación</dt>
+            <dd>El patrón se repite en años distintos, lo que sugiere estacionalidad real y no un hecho aislado de un solo año.</dd>
+            <dt>Utilidad</dt>
+            <dd>Reforzar campañas de prevención y disponibilidad de rutas de atención especialmente entre julio y septiembre.</dd>
+            <dt>Limitación</dt>
+            <dd>Con solo dos años de datos no se puede confirmar que el patrón se mantenga en años futuros.</dd>
+          </dl>
+        </article>
+      </div>
+
+      <div class="col-12">
+        <article class="tp-card">
+          <h3>2. Diciembre de 2025 está incompleto, no necesariamente hay menos casos</h3>
+          <dl class="tp-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿Por qué diciembre de 2025 muestra tan pocas víctimas frente a los demás meses?</dd>
+            <dt>Variables</dt>
+            <dd>FECHA HECHO (día), CANTIDAD.</dd>
+            <dt>Procedimiento</dt>
+            <dd>Suma de CANTIDAD por día dentro de diciembre de 2025.</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              394 víctimas el día 1 de diciembre frente a apenas 11 el día 31; la cifra decae de forma
+              prácticamente constante a lo largo de todo el mes.
+            </dd>
+            <dt>Hallazgo</dt>
+            <dd>La caída no ocurre de golpe a fin de año, sino que es progresiva día a día durante todo diciembre.</dd>
+            <dt>Interpretación</dt>
+            <dd>Ese patrón es típico de una carga de datos incompleta (registros que aún no se digitalizan) y no de una disminución real de casos.</dd>
+            <dt>Utilidad</dt>
+            <dd>No usar diciembre de 2025 como referencia de "mínimo real" de violencia intrafamiliar en ningún indicador del equipo.</dd>
+            <dt>Limitación</dt>
+            <dd>No se puede saber con este dataset si el rezago de carga es igual en todos los departamentos.</dd>
+          </dl>
+        </article>
+      </div>
+
+      <div class="col-12">
+        <article class="tp-card">
+          <h3>3. El número de víctimas aumentó frente al mismo periodo del año anterior</h3>
+          <dl class="tp-knowledge">
+            <dt>Pregunta</dt>
+            <dd>¿Ha aumentado o disminuido la violencia intrafamiliar entre 2025 y 2026?</dd>
+            <dt>Variables</dt>
+            <dd>FECHA HECHO (AÑO, MES), CANTIDAD.</dd>
+            <dt>Procedimiento</dt>
+            <dd>
+              Suma de CANTIDAD de enero a julio en 2025 y en 2026 (únicos meses presentes en ambos años)
+              y cálculo de la variación porcentual.
+            </dd>
+            <dt>Evidencia</dt>
+            <dd>Enero-julio 2025: 79.746 víctimas. Enero-julio 2026: 94.608 víctimas. Variación: +18,6 %.</dd>
+            <dt>Hallazgo</dt>
+            <dd>El incremento se mantiene al comparar exactamente los mismos siete meses en ambos años, no solo el total anual.</dd>
+            <dt>Interpretación</dt>
+            <dd>El aumento parece real y no un artefacto de comparar periodos de distinta duración; aun así, podría reflejar más denuncias y no necesariamente más hechos.</dd>
+            <dt>Utilidad</dt>
+            <dd>Justifica evaluar si los recursos de atención actuales son suficientes frente a una demanda creciente.</dd>
+            <dt>Limitación</dt>
+            <dd>El dataset no distingue si el incremento se debe a más hechos, más denuncias o mejor registro.</dd>
+          </dl>
+        </article>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="row g-4 mb-5">
+    <section class="col-12 col-lg-6" aria-labelledby="limitacion-heading">
+      <div class="tp-card">
+        <h2 id="limitacion-heading" class="section-heading">Limitación del análisis</h2>
+        <p class="mb-0">
+          El periodo 2026 está incompleto (llega hasta julio), por lo que cualquier comparación de
+          totales anuales completos subestima a 2026. Por eso todas las comparaciones año contra año
+          de este tablero usan únicamente los meses presentes en ambos años.
+        </p>
+      </div>
+    </section>
+    <section class="col-12 col-lg-6" aria-labelledby="decision-heading">
+      <div class="tp-card">
+        <h2 id="decision-heading" class="section-heading">Decisión sustentada en los datos</h2>
+        <p class="mb-0">
+          Dado el incremento del 18,6 % interanual (ene-jul) y la concentración sistemática de casos en
+          el tercer trimestre, se recomienda reforzar personal y campañas de atención específicamente
+          entre julio y septiembre, y no reducir recursos en diciembre solo por la baja cifra registrada
+          ese mes, ya que corresponde a un rezago de carga y no a una disminución real.
+        </p>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {% if graficas %}
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+    <script>
+      // Los datos ya vienen calculados desde dimensiones/temporal.py; aquí solo se dibujan.
+      const datosGraficas = {{ graficas | tojson }};
+
+        const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
+        const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
+        const CONFIG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] };
+
+        // Los filtros recargan la página al cambiar.
+        document.querySelectorAll("#filtros-tp select, #filtros-tp input[type=date]").forEach((campo) => {
+          campo.addEventListener("change", () => campo.form.submit());
+        });
+
+        // Visualización 1: víctimas por periodo. El tipo de trazo cambia según
+        // el filtro «Agrupar por» (mes = línea; trimestre = barras), pero los
+        // datos los sigue decidiendo únicamente el rango de fechas.
+        const esTrimestre = datosGraficas.periodo.granularidad === "trimestre";
+        Plotly.newPlot("grafica-1", [{
+          type: esTrimestre ? "bar" : "scatter",
+          mode: esTrimestre ? undefined : "lines+markers",
+          x: datosGraficas.periodo.labels,
+          y: datosGraficas.periodo.valores,
+          line: esTrimestre ? undefined : { color: "#145b63", width: 3 },
+          marker: { color: "#145b63" },
+          hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
+        }], {
+          ...BASE,
+          margin: { l: 50, r: 20, t: 10, b: 40 },
+          xaxis: { automargin: true, gridcolor: "#e1e0d9" },
+          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
+        }, CONFIG);
+
+        // Visualización 2: variación porcentual mes a mes (siempre mensual,
+        // sin importar la vista elegida en la gráfica 1). Verde si sube,
+        // naranja si baja.
+        Plotly.newPlot("grafica-2", [{
+          type: "bar",
+          x: datosGraficas.variacion.labels,
+          y: datosGraficas.variacion.valores,
+          marker: { color: datosGraficas.variacion.valores.map((v) => (v >= 0 ? "#1baf7a" : "#eb6834")) },
+          hovertemplate: "%{x}<br>%{y:+.1f} % frente al mes anterior<extra></extra>",
+        }], {
+          ...BASE,
+          margin: { l: 50, r: 20, t: 10, b: 40 },
+          xaxis: { automargin: true },
+          yaxis: { automargin: true, title: { text: "Variación %", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: true, ticksuffix: " %" },
+        }, CONFIG);
+
+        // Visualización 3: comparación año contra año (mismos meses).
+        Plotly.newPlot("grafica-3", [{
+          type: "bar",
+          x: datosGraficas.comparacion.anios.map(String),
+          y: datosGraficas.comparacion.valores,
+          marker: { color: "#00482B" },
+          hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
+        }], {
+          ...BASE,
+          margin: { l: 50, r: 20, t: 10, b: 40 },
+          xaxis: { automargin: true, type: "category" },
+          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
+        }, CONFIG);
+    </script>
+  {% endif %}
 {% endblock %}
