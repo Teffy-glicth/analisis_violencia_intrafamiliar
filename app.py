@@ -1,13 +1,14 @@
 from flask import Flask, render_template, request
 
 from dimensiones import poblacional as pb
-
+from dimensiones import territorial as tr
 from dimensiones import multivariada as mv
 
 
 app = Flask(__name__)
 
-DATOS_PB = pb.cargar_datos()  
+DATOS_PB = pb.cargar_datos()
+DATOS_TR = tr.cargar_datos()
 DATOS_MV = mv.cargar_datos()  # al iniciar se lee el CSV
 
 
@@ -23,7 +24,7 @@ def poblacional():
 
 @app.route("/territorial")
 def territorial():
-    return render_template("territorial.html")
+    return render_template("territorial.html", **tr.pagina(DATOS_TR, request.args))
 
 
 @app.route("/temporal")

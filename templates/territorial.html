@@ -2,11 +2,530 @@
 
 {% block title %}Dimensión territorial | Violencia intrafamiliar{% endblock %}
 
+{% block head %}
+  <style>
+    .kpi { border-left: 5px solid #0f6fb0; }
+    .kpi .valor { font-size: 1.8rem; font-weight: 700; line-height: 1.15; }
+    .caja-grafica { position: relative; height: 340px; }
+    .caja-grafica.alta { height: 620px; }
+    .interpretacion {
+      margin: 1rem 0 0;
+      padding: 0.85rem 1rem;
+      border-radius: 0.5rem;
+      background: #f5f7f7;
+      font-size: 0.95rem;
+    }
+    .tabla-conocimiento th { width: 9.5rem; color: #0f6fb0; font-weight: 600; }
+    @media (max-width: 575px) {
+      .caja-grafica.alta { height: 760px; }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-  <section class="construction-panel">
+  {% set r = r if r is defined else {} %}
+  {% set k = conocimiento %}
+
+  <section class="mb-4">
     <p class="eyebrow">Análisis de datos</p>
     <h1>Dimensión territorial</h1>
-    <p class="lead">Esta dimensión está en construcción.</p>
-    <p>Aquí se analizará la distribución de los registros entre los territorios disponibles.</p>
+    <p class="lead mb-1">
+      ¿Cómo se distribuye la población y sus principales características entre los territorios disponibles?
+    </p>
+    <p class="text-secondary">
+      Datos del {{ periodo }}: {{ general.registros }} registros y {{ general.total }} víctimas.
+      Las víctimas se calculan sumando <strong>CANTIDAD</strong>; cada fila no equivale necesariamente a una víctima.
+    </p>
   </section>
+
+  <section class="mb-5">
+    <h2 class="section-heading">Variables utilizadas</h2>
+    <div class="list-group shadow-sm">
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>DEPARTAMENTO</strong><br><span class="text-secondary">Departamento donde se registró el hecho; permite comparar la distribución departamental y filtrar el tablero.</span></div>
+        <span class="badge text-bg-light border">Territorial</span>
+      </div>
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>MUNICIPIO</strong><br><span class="text-secondary">Nombre del municipio reportado. Se agrupa con el código DANE municipal para reunir sus localidades.</span></div>
+        <span class="badge text-bg-light border">Territorial</span>
+      </div>
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>CODIGO DANE</strong><br><span class="text-secondary">Código de ocho dígitos: los cinco primeros identifican el municipio y los tres últimos distinguen el código municipal (000) de los centros poblados.</span></div>
+        <span class="badge text-bg-light border">Territorial</span>
+      </div>
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>CANTIDAD</strong><br><span class="text-secondary">Número de víctimas en el registro. Se suma para comparar cantidades y calcular participaciones.</span></div>
+        <span class="badge text-bg-light border">Numérica</span>
+      </div>
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>FECHA HECHO</strong><br><span class="text-secondary">Fecha del hecho; se transforma a año para filtrar 2025 o 2026.</span></div>
+        <span class="badge text-bg-light border">Temporal</span>
+      </div>
+    </div>
+    <p class="small text-secondary mt-2 mb-0">
+      La agrupación por municipio usa los cinco primeros dígitos del código DANE. La terminación 000 se presenta separada de los códigos de centros poblados; no se interpreta como una tasa poblacional.
+    </p>
+  </section>
+
+  <section class="mb-5">
+    <h2 class="section-heading">Tablero</h2>
+    {% if not hay_datos %}
+      <div class="alert alert-warning">No hay registros para el departamento y año seleccionados.</div>
+    {% else %}
+      <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+          <div class="card kpi shadow-sm h-100"><div class="card-body">
+            <p class="text-secondary mb-1">Víctimas registradas</p>
+            <p class="valor mb-1">{{ r.total }}</p>
+            <p class="small text-secondary mb-0">en {{ r.registros }} registros</p>
+          </div></div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card kpi shadow-sm h-100"><div class="card-body">
+            <p class="text-secondary mb-1">Municipios con registros</p>
+            <p class="valor mb-1">{{ r.municipios }}</p>
+            <p class="small text-secondary mb-0">{{ r.territorios_codificados }} códigos DANE</p>
+          </div></div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card kpi shadow-sm h-100"><div class="card-body">
+            <p class="text-secondary mb-1">Municipio con más víctimas</p>
+            <p class="valor mb-1">{{ r.pct_max }} %</p>
+            <p class="small text-secondary mb-0">{{ r.municipio_max }}: {{ r.victimas_max }} víctimas</p>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <div class="col-12">
+          <div class="card shadow-sm"><div class="card-body">
+            <h3 class="h5">Distribución de víctimas por departamento</h3>
+            <div class="caja-grafica alta"><canvas id="graficaDepartamentos"></canvas></div>
+            <p class="interpretacion">
+              <strong>Interpretación:</strong>
+              Cada barra muestra la suma de víctimas en el departamento y su participación sobre el total filtrado.
+              La comparación describe el volumen de reportes, no el riesgo individual de sus habitantes.
+            </p>
+          </div></div>
+        </div>
+        <div class="col-12 col-lg-7">
+          <div class="card shadow-sm h-100"><div class="card-body">
+            <h3 class="h5">Municipios con mayor cantidad de víctimas</h3>
+            <div class="caja-grafica alta"><canvas id="graficaMunicipios"></canvas></div>
+            <p class="interpretacion">
+              <strong>Interpretación:</strong>
+              Se muestran hasta 12 municipios ordenados de mayor a menor. La participación de cada municipio se calcula frente al total de la selección actual.
+            </p>
+          </div></div>
+        </div>
+        <div class="col-12 col-lg-5">
+          <div class="card shadow-sm h-100"><div class="card-body">
+            <h3 class="h5">Cundinamarca frente a los demás departamentos</h3>
+            <div class="caja-grafica"><canvas id="graficaCundinamarca"></canvas></div>
+            <p class="interpretacion">
+              <strong>Interpretación:</strong>
+              Compara las víctimas registradas en Cundinamarca con la suma del resto del país. La comparación sigue siendo nacional aunque se filtre el tablero por departamento y respeta el año seleccionado; muestra cantidades, no tasas de riesgo.
+            </p>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-4"><div class="card-body">
+        <h3 class="h5">Concentración acumulada de víctimas entre municipios</h3>
+        <p class="text-secondary">
+          Los municipios se ordenan de mayor a menor cantidad. En esta selección,
+          <strong>{{ graficas.concentracion.municipios_80 }}</strong> de
+          <strong>{{ graficas.concentracion.total_municipios }}</strong> municipios con víctimas
+          ({{ graficas.concentracion.pct_municipios_80 }} %) reúnen al menos el 80 % de las víctimas registradas.
+        </p>
+        <div class="caja-grafica"><canvas id="graficaConcentracion"></canvas></div>
+        <p class="interpretacion">
+          <strong>Interpretación:</strong>
+          Cada punto añade el siguiente municipio del ranking y muestra qué porcentaje del total acumulan, desde los de mayor hasta los de menor volumen.
+          Cuanto más rápido sube la curva, más concentrados están los reportes en los primeros municipios. El umbral punteado marca el 80 %;
+          esta concentración describe registros, no prevalencia ni riesgo poblacional.
+        </p>
+      </div></div>
+
+    {% endif %}
+
+    <form id="filtros" method="get" action="{{ url_for('territorial') }}" class="card card-body border-primary shadow-sm mb-4">
+      <div class="mb-3">
+        <h3 class="h5 mb-1">Filtros de la distribución municipal</h3>
+        <p class="small text-secondary mb-0">Elige un departamento, un año o ambos para actualizar los resultados y consultar la tabla completa.</p>
+      </div>
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-5">
+          <label for="departamento" class="form-label fw-semibold">Departamento</label>
+          <select id="departamento" name="departamento" class="form-select">
+            <option value="">Todo el país</option>
+            {% for d in departamentos %}
+              <option value="{{ d }}" {% if d == depto_elegido %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <label for="anio" class="form-label fw-semibold">Año</label>
+          <select id="anio" name="anio" class="form-select">
+            <option value="">2025 y 2026</option>
+            {% for a in anios %}
+              <option value="{{ a }}" {% if a|string == anio_elegido %}selected{% endif %}>{{ a }}{% if a == 2026 %} (hasta julio){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-success">Aplicar</button>
+          <a href="{{ url_for('territorial') }}" class="btn btn-outline-secondary">Limpiar filtros</a>
+        </div>
+      </div>
+    </form>
+
+    {% if depto_elegido or anio_elegido %}
+      {% if hay_datos %}
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+              <div>
+                <h3 class="h5">Distribución completa de víctimas por municipio</h3>
+                <p class="small text-secondary mb-0">
+                  Todos los municipios presentes en los registros seleccionados, ordenados de mayor a menor cantidad.
+                  La participación porcentual se calcula sobre el total de víctimas de la selección.
+                </p>
+              </div>
+              <button
+                id="alternarDistribucion"
+                class="btn btn-outline-primary flex-shrink-0"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#distribucionCompleta"
+                aria-expanded="true"
+                aria-controls="distribucionCompleta"
+              >Ocultar lista</button>
+            </div>
+            <div id="distribucionCompleta" class="collapse show">
+              <div class="pt-3">
+                <div class="row g-2 align-items-center mb-3">
+                  <div class="col-12 col-md-6">
+                    <label for="buscarTerritorio" class="form-label fw-semibold">Buscar municipio o código DANE</label>
+                    <input id="buscarTerritorio" type="search" class="form-control" placeholder="Escribe un nombre o código">
+                  </div>
+                  <div class="col-12 col-md-6 text-md-end">
+                    <span id="conteoTerritorios" class="small text-secondary" aria-live="polite">{{ tabla|length }} municipios</span>
+                  </div>
+                </div>
+                <div class="table-responsive">
+                  <table id="tablaMunicipios" class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr><th scope="col">#</th><th scope="col">Municipio (departamento)</th><th scope="col">Código municipal</th><th scope="col" class="text-end">Registros</th><th scope="col" class="text-end">Víctimas</th><th scope="col" class="text-end">Participación</th></tr>
+                    </thead>
+                    <tbody>
+                      {% for fila in tabla %}
+                        <tr data-busqueda="{{ fila.busqueda }}">
+                          <td>{{ fila.posicion }}</td>
+                          <td>{{ fila.territorio }}</td>
+                          <td>{{ fila.codigo }}</td>
+                          <td class="text-end">{{ fila.registros }}</td>
+                          <td class="text-end">{{ fila.victimas }}</td>
+                          <td class="text-end">{{ fila.porcentaje }} %</td>
+                        </tr>
+                      {% else %}
+                        <tr><td colspan="6" class="text-center text-secondary">No hay municipios para los filtros seleccionados.</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="alert alert-info">No hay municipios para mostrar con los filtros seleccionados. Cambia o limpia los filtros.</div>
+      {% endif %}
+      {% else %}
+        <p class="small text-secondary mt-3 mb-0">
+          Aplica un filtro de departamento o año para consultar la tabla completa de municipios, víctimas y participación.
+        </p>
+    {% endif %}
+  </section>
+
+  <section class="mb-5">
+    <h2 class="section-heading">Conocimientos evidentes</h2>
+    <p class="text-secondary">Calculados con todos los datos de enero de 2025 a julio de 2026; no cambian al modificar los filtros del tablero.</p>
+
+    <div class="accordion shadow-sm" id="conocimientos">
+      <div class="accordion-item">
+        <h3 class="accordion-header">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#c1">
+            1. Los reportes se concentran en pocos departamentos
+          </button>
+        </h3>
+        <div id="c1" class="accordion-collapse collapse show" data-bs-parent="#conocimientos">
+          <div class="accordion-body">
+            <table class="table table-sm tabla-conocimiento mb-0">
+              <tr><th>Pregunta</th><td>¿Cómo se distribuyen las víctimas entre los departamentos y cuánto reúnen los que más reportan?</td></tr>
+              <tr><th>Variables</th><td>DEPARTAMENTO y CANTIDAD.</td></tr>
+              <tr><th>Procedimiento</th><td>Se sumó CANTIDAD por departamento, se calculó su porcentaje del total nacional y se sumaron los cinco departamentos con mayor volumen.</td></tr>
+              <tr><th>Evidencia</th><td>Gráfica departamental: {{ k.departamento_mayor }} registra {{ k.victimas_departamento_mayor }} víctimas ({{ k.pct_departamento_mayor }} %); los cinco primeros reúnen {{ k.pct_top5_departamentos }} %. El menor volumen es {{ k.departamento_menor }} ({{ k.victimas_departamento_menor }} víctimas).</td></tr>
+              <tr><th>Hallazgo</th><td>La participación territorial es desigual: una parte importante de las víctimas registradas se concentra en los departamentos con mayor volumen, mientras que los de menor volumen tienen cifras mucho menores.</td></tr>
+              <tr><th>Interpretación</th><td>El volumen puede reflejar tamaño poblacional, frecuencia de denuncia, capacidad de registro y violencia reportada; por sí solo no permite afirmar que el riesgo por persona sea mayor.</td></tr>
+              <tr><th>Utilidad</th><td>Orientar la distribución de capacidad de atención según el volumen observado y revisar que los departamentos de menor reporte cuenten con canales de denuncia accesibles.</td></tr>
+              <tr><th>Limitación</th><td>No se dispone aquí de población por departamento, cobertura de denuncia ni medida de subregistro para calcular tasas comparables.</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h3 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c2">
+            2. Hay una gran diferencia entre los municipios con más y menos víctimas registradas
+          </button>
+        </h3>
+        <div id="c2" class="accordion-collapse collapse" data-bs-parent="#conocimientos">
+          <div class="accordion-body">
+            <table class="table table-sm tabla-conocimiento mb-0">
+              <tr><th>Pregunta</th><td>¿Qué municipios reúnen más víctimas y qué tan distinto es su volumen frente al municipio con menos reportes?</td></tr>
+              <tr><th>Variables</th><td>DEPARTAMENTO, MUNICIPIO, CODIGO DANE y CANTIDAD.</td></tr>
+              <tr><th>Procedimiento</th><td>Se agruparon los registros por los cinco primeros dígitos del código DANE (municipio), se sumó CANTIDAD y se comparó el mayor total con el menor total positivo.</td></tr>
+              <tr><th>Evidencia</th><td>El mayor es {{ k.municipio_mayor }} con {{ k.victimas_municipio_mayor }} víctimas ({{ k.pct_municipio_mayor }} % del total); uno de los {{ k.municipios_empatados_minimo }} municipios empatados en el menor volumen es {{ k.municipio_menor }} con {{ k.victimas_municipio_menor }}. La razón entre el volumen máximo y el mínimo positivo es {{ k.diferencia_municipios }} a 1.</td></tr>
+              <tr><th>Hallazgo</th><td>La distribución municipal tiene una brecha marcada entre el territorio que más concentra registros y los municipios con muy pocos reportes.</td></tr>
+              <tr><th>Interpretación</th><td>La diferencia muestra dónde se acumularon víctimas denunciadas en este conjunto, no una comparación de prevalencia ni una explicación de sus causas.</td></tr>
+              <tr><th>Utilidad</th><td>Usar el ranking para planear capacidad de atención de acuerdo con la carga reportada y detectar municipios con cifras bajas que requieran revisar acceso y calidad del registro.</td></tr>
+              <tr><th>Limitación</th><td>Los municipios pueden diferir en población, cobertura institucional y subregistro; el conteo no permite atribuir esas diferencias a un mayor riesgo territorial.</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h3 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c3">
+            3. Los códigos de centros poblados representan una fracción pequeña del total
+          </button>
+        </h3>
+        <div id="c3" class="accordion-collapse collapse" data-bs-parent="#conocimientos">
+          <div class="accordion-body">
+            <table class="table table-sm tabla-conocimiento mb-0">
+              <tr><th>Pregunta</th><td>¿Qué parte de las víctimas se asocia a códigos DANE de centros poblados y cuál se registra con código municipal terminado en 000?</td></tr>
+              <tr><th>Variables</th><td>CODIGO DANE, MUNICIPIO y CANTIDAD.</td></tr>
+              <tr><th>Procedimiento</th><td>Se separaron los códigos según su terminación: 000 para el nivel municipal/cabecera y distinta de 000 para centros poblados; se contaron registros, códigos distintos y víctimas sumadas.</td></tr>
+              <tr><th>Evidencia</th><td>Hay {{ k.victimas_codigo_municipal }} víctimas ({{ k.pct_codigo_municipal }} %) en {{ k.registros_codigo_municipal }} registros con código terminado en 000. Los centros poblados suman {{ k.victimas_centros }} víctimas ({{ k.pct_centros }} %) en {{ k.registros_centros }} registros y {{ k.codigos_centros }} códigos distintos.</td></tr>
+              <tr><th>Hallazgo</th><td>La mayoría de los registros y víctimas está asociada al código municipal terminado en 000; son muchos menos los registros identificados con un código específico de centro poblado.</td></tr>
+              <tr><th>Interpretación</th><td>La baja participación de centros poblados puede indicar concentración de reportes en el nivel municipal o menor detalle geográfico en la captura; los datos no permiten distinguir esas explicaciones.</td></tr>
+              <tr><th>Utilidad</th><td>Mejorar la captura y validación del código DANE y desagregar ubicación cuando sea posible, para orientar servicios también en centros poblados.</td></tr>
+              <tr><th>Limitación</th><td>El código geográfico disponible no garantiza que cada registro esté localizado con el mismo nivel de precisión; no se deben interpretar los códigos 000 como ausencia de hechos en zonas rurales.</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row g-4 mb-5">
+    <div class="col-12 col-lg-6">
+      <div class="card border-warning h-100">
+        <div class="card-header bg-warning-subtle fw-semibold">Limitación del análisis</div>
+        <div class="card-body">
+          <p class="mb-0">
+            El conjunto registra hechos conocidos por la Policía y no representa necesariamente todos los casos ocurridos.
+            Como no incluye población por territorio ni una medida de subregistro, las cantidades y participaciones no son tasas de riesgo.
+            Además, el nivel de detalle del código DANE puede variar entre registros.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card border-success h-100">
+        <div class="card-header bg-success-subtle fw-semibold">Decisión sustentada en los datos</div>
+        <div class="card-body">
+          <p class="mb-0">
+            Planear la capacidad de atención inmediata en los departamentos y municipios con mayor volumen de víctimas reportadas,
+            sin retirar una capacidad básica de respuesta de los territorios con menos registros. En paralelo, fortalecer la captura del código DANE
+            para reconocer mejor las necesidades de los centros poblados; validar esta priorización con población cubierta y disponibilidad local de servicios.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  {% if hay_datos %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      const datos = {{ graficas | tojson }};
+      const AZUL = "#0f6fb0";
+      const NARANJA = "#c4561a";
+      const VERDE = "#37856a";
+
+      Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+      Chart.defaults.maintainAspectRatio = false;
+      document.querySelectorAll("#filtros select").forEach(function (select) {
+        select.addEventListener("change", function () { select.form.submit(); });
+      });
+
+      const distribucionCompleta = document.getElementById("distribucionCompleta");
+      const alternarDistribucion = document.getElementById("alternarDistribucion");
+      if (distribucionCompleta && alternarDistribucion) {
+        distribucionCompleta.addEventListener("hidden.bs.collapse", function () {
+          alternarDistribucion.textContent = "Mostrar lista";
+        });
+        distribucionCompleta.addEventListener("shown.bs.collapse", function () {
+          alternarDistribucion.textContent = "Ocultar lista";
+        });
+      }
+
+      const buscarTerritorio = document.getElementById("buscarTerritorio");
+      const filasMunicipios = Array.from(document.querySelectorAll("#tablaMunicipios tbody tr[data-busqueda]"));
+      const conteoTerritorios = document.getElementById("conteoTerritorios");
+      if (buscarTerritorio) {
+        buscarTerritorio.addEventListener("input", function () {
+          const consulta = buscarTerritorio.value.trim().toLocaleLowerCase("es-CO");
+          let visibles = 0;
+          filasMunicipios.forEach(function (fila) {
+            const coincide = fila.dataset.busqueda.includes(consulta);
+            fila.hidden = !coincide;
+            if (coincide) visibles += 1;
+          });
+          conteoTerritorios.textContent = visibles.toLocaleString("es-CO") +
+            (visibles === 1 ? " municipio" : " municipios");
+        });
+      }
+
+      function tooltipVictimas(grafica) {
+        return function (context) {
+          const index = context.dataIndex;
+          return " " + grafica.victimas[index].toLocaleString("es-CO") +
+            " víctimas (" + grafica.porcentajes[index].toLocaleString("es-CO") + " %)";
+        };
+      }
+
+      function barraHorizontal(elemento, grafica, color) {
+        new Chart(document.getElementById(elemento), {
+          type: "bar",
+          data: {
+            labels: grafica.etiquetas,
+            datasets: [{
+              data: grafica.victimas,
+              backgroundColor: color,
+              borderRadius: 4,
+              maxBarThickness: 30
+            }]
+          },
+          options: {
+            indexAxis: "y",
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: tooltipVictimas(grafica) } }
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                title: { display: true, text: "Víctimas" },
+                ticks: { callback: function (value) { return value.toLocaleString("es-CO"); } }
+              },
+              y: { grid: { display: false } }
+            }
+          }
+        });
+      }
+
+      barraHorizontal("graficaDepartamentos", datos.departamentos, AZUL);
+      barraHorizontal("graficaMunicipios", datos.municipios, NARANJA);
+      const comparacionCundinamarca = datos.comparacion_cundinamarca;
+      new Chart(document.getElementById("graficaCundinamarca"), {
+        type: "doughnut",
+        data: {
+          labels: comparacionCundinamarca.etiquetas,
+          datasets: [{
+            data: comparacionCundinamarca.victimas,
+            backgroundColor: [AZUL, VERDE],
+            borderColor: "#ffffff",
+            borderWidth: 2
+          }]
+        },
+        options: {
+          cutout: "58%",
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: { label: tooltipVictimas(comparacionCundinamarca) }
+            }
+          }
+        }
+      });
+
+      const concentracion = datos.concentracion;
+      new Chart(document.getElementById("graficaConcentracion"), {
+        type: "scatter",
+        data: {
+          datasets: [
+            {
+              label: "Víctimas acumuladas",
+              data: concentracion.puntos,
+              showLine: true,
+              borderColor: NARANJA,
+              backgroundColor: NARANJA,
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              tension: 0.15
+            },
+            {
+              label: "Umbral del 80 %",
+              data: [
+                { x: 1, y: 80 },
+                { x: Math.max(concentracion.total_municipios, 1), y: 80 }
+              ],
+              showLine: true,
+              borderColor: "#6c757d",
+              borderDash: [6, 5],
+              borderWidth: 1.5,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: function (items) {
+                  const punto = items[0].raw;
+                  return punto.territorio || "Umbral del 80 %";
+                },
+                label: function (context) {
+                  if (context.datasetIndex === 1) return " 80 % de las víctimas";
+                  const punto = context.raw;
+                  return [
+                    " Posición en el ranking: " + punto.x.toLocaleString("es-CO"),
+                    " Víctimas del municipio: " + punto.victimas.toLocaleString("es-CO"),
+                    " Víctimas acumuladas: " + punto.acumulado.toLocaleString("es-CO"),
+                    " Participación acumulada: " + punto.y.toLocaleString("es-CO") + " %"
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: "linear",
+              min: 1,
+              max: Math.max(concentracion.total_municipios, 1),
+              title: { display: true, text: "Municipios ordenados de mayor a menor" },
+              ticks: {
+                maxTicksLimit: 10,
+                callback: function (value) { return value.toLocaleString("es-CO"); }
+              }
+            },
+            y: {
+              min: 0,
+              max: 100,
+              title: { display: true, text: "Víctimas acumuladas (%)" },
+              ticks: { callback: function (value) { return value + " %"; } }
+            }
+          }
+        }
+      });
+    </script>
+  {% endif %}
 {% endblock %}
