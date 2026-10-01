@@ -2,11 +2,440 @@
 
 {% block title %}Dimensión poblacional | Violencia intrafamiliar{% endblock %}
 
+{% block head %}
+  <style>
+    .kpi {
+      border-left: 5px solid #0f6fb0;
+    }
+    .kpi .valor {
+      font-size: 2.1rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .caja-grafica {
+      position: relative;
+      height: 300px;
+    }
+    .caja-grafica.alta {
+      height: 340px;
+    }
+    .interpretacion {
+      background: #f5f7f7;
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
+      margin-top: 1rem;
+      margin-bottom: 0;
+      font-size: 0.95rem;
+    }
+    .tabla-conocimiento th {
+      width: 9.5rem;
+      color: #0f6fb0;
+      font-weight: 600;
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-  <section class="construction-panel">
+  {% set r = r if r is defined else {} %}
+  {% set k = conocimiento %}
+
+  <section class="mb-4">
     <p class="eyebrow">Análisis de datos</p>
     <h1>Dimensión poblacional</h1>
-    <p class="lead">Esta dimensión está en construcción.</p>
-    <p>Aquí se analizarán las características de la población registrada en el conjunto de datos.</p>
+    <p class="lead mb-1">
+      ¿Cómo está compuesta y distribuida la población de víctimas de violencia intrafamiliar
+      según sus principales características?
+    </p>
+    <p class="text-secondary">
+      Datos del {{ periodo }}: {{ general.registros }} registros y {{ general.total }} víctimas.
+      Cada registro puede tener varias víctimas, por eso siempre se suma la columna CANTIDAD.
+    </p>
   </section>
+
+  <section class="mb-5">
+    <h2 class="section-heading">Variables utilizadas</h2>
+    <div class="list-group shadow-sm">
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>GENERO</strong><br><span class="text-secondary">Género de la víctima (femenino, masculino).</span></div>
+        <span class="badge text-bg-light border">Categórica</span>
+      </div>
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>GRUPO ETARIO</strong><br><span class="text-secondary">Grupo de edad: adultos, menores y adolescentes.</span></div>
+        <span class="badge text-bg-light border">Categórica</span>
+      </div>
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>ARMAS MEDIOS</strong><br><span class="text-secondary">Arma o medio con el que se agredió a la víctima.</span></div>
+        <span class="badge text-bg-light border">Categórica</span>
+      </div>
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>CANTIDAD</strong><br><span class="text-secondary">Número de víctimas del registro. Es la que se suma en todos los cálculos.</span></div>
+        <span class="badge text-bg-light border">Numérica</span>
+      </div>
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+        <div><strong>DEPARTAMENTO y FECHA HECHO</strong><br><span class="text-secondary">Se usan para los filtros (departamento y año).</span></div>
+        <span class="badge text-bg-light border">Territorial y temporal</span>
+      </div>
+    </div>
+    <p class="small text-secondary mt-2 mb-0">Los registros sin género, grupo etario o arma no se eliminan: aparecen como "No reporta".</p>
+  </section>
+
+  <section class="mb-5">
+    <h2 class="section-heading">Tablero</h2>
+
+    <form id="filtros" method="get" action="{{ url_for('poblacional') }}" class="card card-body shadow-sm mb-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-5">
+          <label for="departamento" class="form-label fw-semibold">Departamento</label>
+          <select id="departamento" name="departamento" class="form-select">
+            <option value="">Todo el país</option>
+            {% for d in departamentos %}
+              <option value="{{ d }}" {% if d == depto_elegido %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <label for="anio" class="form-label fw-semibold">Año</label>
+          <select id="anio" name="anio" class="form-select">
+            <option value="">2025 y 2026</option>
+            {% for a in anios %}
+              <option value="{{ a }}" {% if a|string == anio_elegido %}selected{% endif %}>{{ a }}{% if a == 2026 %} (hasta julio){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-success">Aplicar</button>
+          {% if depto_elegido or anio_elegido %}
+            <a href="{{ url_for('poblacional') }}" class="btn btn-outline-secondary">Limpiar</a>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+
+    {% if not hay_datos %}
+      <div class="alert alert-warning">No hay registros para ese departamento en el año elegido.</div>
+    {% else %}
+      <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+          <div class="card kpi shadow-sm h-100"><div class="card-body">
+            <p class="text-secondary mb-1">Total de víctimas</p>
+            <p class="valor mb-1">{{ r.total }}</p>
+            <p class="small text-secondary mb-0">en {{ r.registros }} registros</p>
+          </div></div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card kpi shadow-sm h-100"><div class="card-body">
+            <p class="text-secondary mb-1">Mujeres víctimas</p>
+            <p class="valor mb-1">{{ r.pct_mujeres }} %</p>
+            <p class="small text-secondary mb-0">
+              {{ r.mujeres }} mujeres{% if r.mujeres_por_hombre %} ({{ r.mujeres_por_hombre }} por cada hombre){% endif %}
+            </p>
+          </div></div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card kpi shadow-sm h-100"><div class="card-body">
+            <p class="text-secondary mb-1">Grupo etario predominante</p>
+            <p class="valor mb-1">{{ r.pct_grupo_predominante }} %</p>
+            <p class="small text-secondary mb-0">{{ r.grupo_predominante }}: {{ r.victimas_grupo_predominante }} víctimas</p>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-5">
+          <div class="card shadow-sm h-100"><div class="card-body">
+            <h3 class="h5">Víctimas según género</h3>
+            <div class="caja-grafica"><canvas id="graficaGenero"></canvas></div>
+            <p class="interpretacion">
+              <strong>Interpretación:</strong>
+              {{ r.pct_mujeres }} de cada 100 víctimas son mujeres y {{ r.pct_hombres }} son hombres.
+              {% if r.mujeres_por_hombre %}Es decir, por cada hombre hay {{ r.mujeres_por_hombre }} mujeres víctimas.{% endif %}
+              Las mujeres son el grupo predominante; en {{ r.pct_genero_nr }} % de los casos no se registró el género.
+            </p>
+          </div></div>
+        </div>
+        <div class="col-12 col-lg-7">
+          <div class="card shadow-sm h-100"><div class="card-body">
+            <h3 class="h5">Víctimas según grupo etario</h3>
+            <div class="caja-grafica"><canvas id="graficaEdad"></canvas></div>
+            <p class="interpretacion">
+              <strong>Interpretación:</strong>
+              Los adultos son la gran mayoría ({{ r.pct_adultos }} %). Menores y adolescentes suman
+              {{ r.nna }} víctimas ({{ r.pct_nna }} %){% if r.uno_de_cada %}, más o menos 1 de cada {{ r.uno_de_cada }}{% endif %}.
+              Aunque en porcentaje son pocos, en número son muchos niños, niñas y adolescentes.
+            </p>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-4"><div class="card-body">
+        <h3 class="h5">Víctimas según arma o medio empleado</h3>
+        <div class="caja-grafica alta"><canvas id="graficaArmas"></canvas></div>
+        <p class="interpretacion">
+          <strong>Interpretación:</strong>
+          El {{ r.pct_sin_armas }} % de las víctimas fueron agredidas sin armas y solo el {{ r.pct_con_arma }} % con algún arma o medio.
+          Dentro de estas, lo más común son los objetos contundentes ({{ r.pct_contundentes }} %), mientras que el arma blanca
+          ({{ r.pct_arma_blanca }} %) y el arma de fuego ({{ r.pct_arma_fuego }} %) son casos minoritarios.
+        </p>
+      </div></div>
+
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h3 class="h5">Participación de cada categoría</h3>
+          <p class="small text-secondary">El grupo predominante y el minoritario se calculan sin tener en cuenta "No reporta".</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Variable</th>
+                  <th>Categoría</th>
+                  <th class="text-end">Víctimas</th>
+                  <th class="text-end">%</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for fila in tabla %}
+                  <tr>
+                    <td class="fw-semibold">{{ fila.variable }}</td>
+                    <td>{{ fila.categoria }}</td>
+                    <td class="text-end">{{ fila.victimas }}</td>
+                    <td class="text-end">{{ fila.porcentaje }} %</td>
+                    <td>
+                      {% if fila.grupo == "Predominante" %}<span class="badge text-bg-primary">Predominante</span>
+                      {% elif fila.grupo == "Minoritario" %}<span class="badge text-bg-secondary">Minoritario</span>
+                      {% elif fila.grupo == "Sin dato" %}<span class="small text-secondary">sin dato</span>{% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="mb-5">
+    <h2 class="section-heading">Conocimientos evidentes</h2>
+    <p class="text-secondary">Calculados con todos los datos, de enero de 2025 a julio de 2026 (no cambian con los filtros).</p>
+
+    <div class="accordion shadow-sm" id="conocimientos">
+      <div class="accordion-item">
+        <h3 class="accordion-header">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#c1">
+            1. La mayoría de las víctimas son mujeres, y eso no cambia con el año ni con el departamento
+          </button>
+        </h3>
+        <div id="c1" class="accordion-collapse collapse show" data-bs-parent="#conocimientos">
+          <div class="accordion-body">
+            <table class="table table-sm tabla-conocimiento mb-0">
+              <tr><th>Pregunta</th><td>¿Cómo se reparten las víctimas por género? ¿Esa proporción se mantiene entre años y departamentos?</td></tr>
+              <tr><th>Variables</th><td>GENERO, CANTIDAD, FECHA HECHO (año) y DEPARTAMENTO.</td></tr>
+              <tr><th>Procedimiento</th><td>Se sumó CANTIDAD por género y se sacó el porcentaje. Luego se repitió el cálculo para cada año y cada departamento.</td></tr>
+              <tr><th>Evidencia</th><td>
+                Gráfica de género e indicador de mujeres víctimas: {{ general.mujeres }} mujeres ({{ general.pct_mujeres }} %).
+                En 2025 fueron el {{ k.mujeres_2025 }} % y en 2026 el {{ k.mujeres_2026 }} %. Por departamento van desde
+                {{ k.pct_depto_min }} % ({{ k.depto_min }}) hasta {{ k.pct_depto_max }} % ({{ k.depto_max }}).
+              </td></tr>
+              <tr><th>Hallazgo</th><td>Hay {{ general.mujeres_por_hombre }} mujeres víctimas por cada hombre, y en ningún departamento las mujeres bajan del {{ k.pct_depto_min }} %.</td></tr>
+              <tr><th>Interpretación</th><td>La violencia intrafamiliar que se denuncia afecta principalmente a las mujeres, y es algo que pasa en todo el país, no en una región en particular.</td></tr>
+              <tr><th>Utilidad</th><td>Sirve para justificar que la prevención y la atención tengan enfoque de género en todos los departamentos.</td></tr>
+              <tr><th>Limitación</th><td>
+                Son casos denunciados; si los hombres denuncian menos, su porcentaje real podría ser mayor. También depende de cómo se cuente:
+                contando filas en vez de sumar CANTIDAD, las mujeres serían el {{ k.mujeres_contando_filas }} %.
+              </td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h3 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c2">
+            2. Los adultos son casi todas las víctimas, pero 1 de cada {{ general.uno_de_cada }} es menor de edad
+          </button>
+        </h3>
+        <div id="c2" class="accordion-collapse collapse" data-bs-parent="#conocimientos">
+          <div class="accordion-body">
+            <table class="table table-sm tabla-conocimiento mb-0">
+              <tr><th>Pregunta</th><td>¿Qué grupos de edad predominan entre las víctimas y cuáles son minoritarios?</td></tr>
+              <tr><th>Variables</th><td>GRUPO ETARIO y CANTIDAD.</td></tr>
+              <tr><th>Procedimiento</th><td>Suma de CANTIDAD por grupo etario, porcentaje de cada grupo y suma de menores con adolescentes.</td></tr>
+              <tr><th>Evidencia</th><td>
+                Gráfica de grupo etario: adultos {{ k.adultos }} ({{ general.pct_adultos }} %), menores {{ k.menores }} ({{ k.pct_menores }} %)
+                y adolescentes {{ k.adolescentes }} ({{ k.pct_adolescentes }} %).
+              </td></tr>
+              <tr><th>Hallazgo</th><td>
+                Los adolescentes son el grupo minoritario. Menores y adolescentes juntos suman {{ general.nna }} víctimas ({{ general.pct_nna }} %),
+                y hay {{ k.menores_por_adolescente }} menores por cada adolescente.
+              </td></tr>
+              <tr><th>Interpretación</th><td>Aunque el porcentaje es bajo, son miles de niños, niñas y adolescentes afectados, y los más pequeños aparecen más que los adolescentes.</td></tr>
+              <tr><th>Utilidad</th><td>Muestra que se necesita una ruta de protección para menores (ICBF, comisarías de familia) dentro de la atención de violencia intrafamiliar.</td></tr>
+              <tr><th>Limitación</th><td>El conjunto de datos no dice qué edades tiene cada grupo, así que no se puede analizar por edad exacta.</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h3 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c3">
+            3. Casi todas las agresiones ocurren sin armas; el arma de fuego es la menos frecuente
+          </button>
+        </h3>
+        <div id="c3" class="accordion-collapse collapse" data-bs-parent="#conocimientos">
+          <div class="accordion-body">
+            <table class="table table-sm tabla-conocimiento mb-0">
+              <tr><th>Pregunta</th><td>¿Con qué armas o medios se agrede a las víctimas? ¿Cuáles son los más y los menos comunes?</td></tr>
+              <tr><th>Variables</th><td>ARMAS MEDIOS y CANTIDAD.</td></tr>
+              <tr><th>Procedimiento</th><td>Suma de CANTIDAD por arma o medio y porcentaje de cada categoría.</td></tr>
+              <tr><th>Evidencia</th><td>
+                Gráfica de armas o medios: sin armas {{ k.sin_armas }} ({{ general.pct_sin_armas }} %), contundentes {{ k.contundentes }}
+                ({{ general.pct_contundentes }} %), arma blanca {{ k.arma_blanca }} ({{ general.pct_arma_blanca }} %) y arma de fuego
+                {{ k.arma_fuego }} ({{ general.pct_arma_fuego }} %).
+              </td></tr>
+              <tr><th>Hallazgo</th><td>
+                Solo el {{ general.pct_con_arma }} % de las víctimas fue agredida con algún arma o medio, y casi siempre fueron objetos
+                contundentes (1 de cada {{ k.uno_de_cada_contundente }} víctimas).
+              </td></tr>
+              <tr><th>Interpretación</th><td>Que no haya armas no quiere decir que la agresión sea leve: puede haber golpes con el cuerpo o violencia psicológica.</td></tr>
+              <tr><th>Utilidad</th><td>La atención a las víctimas no debería depender de que haya lesiones por arma; hay que detectar los casos a tiempo y dar apoyo psicosocial.</td></tr>
+              <tr><th>Limitación</th><td>La variable no dice qué tipo de violencia fue (física, psicológica, económica) ni qué tan graves fueron las lesiones.</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row g-4 mb-5">
+    <div class="col-12 col-lg-6">
+      <div class="card border-warning h-100">
+        <div class="card-header bg-warning-subtle fw-semibold">Limitación del análisis</div>
+        <div class="card-body">
+          <p class="mb-0">
+            Los datos son denuncias hechas ante la Policía, no todos los casos que ocurren, así que los grupos que denuncian
+            menos pueden estar subrepresentados. Además, 2026 solo llega hasta julio y el conjunto no trae la población de
+            cada departamento ni las edades exactas, por lo que no se pueden calcular tasas ni analizar por edad.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card border-success h-100">
+        <div class="card-header bg-success-subtle fw-semibold">Decisión sustentada en los datos</div>
+        <div class="card-body">
+          <p class="mb-0">
+            Enfocar la ruta de atención en las <strong>mujeres adultas</strong>, que son el {{ k.pct_mujeres_adultas }} % de todas
+            las víctimas, pero sin dejar de lado a <strong>niños, niñas y adolescentes</strong> ({{ general.nna }} víctimas), que
+            necesitan una atención diferente. Y como el {{ general.pct_sin_armas }} % de los casos ocurre sin armas, la atención
+            no debería exigir lesiones visibles para activarse.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  {% if hay_datos %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      const datos = JSON.parse('{{ graficas | tojson | safe }}');
+      const AZUL = "#0f6fb0";
+      const NARANJA = "#c4561a";
+      const GRIS = "#b8c2c3";
+
+      Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+      Chart.defaults.maintainAspectRatio = false;
+
+      // al cambiar un filtro se envía el formulario
+      document.querySelectorAll("#filtros select").forEach(function (s) {
+        s.addEventListener("change", function () { s.form.submit(); });
+      });
+
+      function colores(etiquetas, lista) {
+        // "No reporta" siempre en gris
+        return etiquetas.map(function (e, i) { return e.startsWith("No reporta") ? GRIS : lista[i % lista.length]; });
+      }
+
+      function textoTooltip(grafica) {
+        return function (ctx) {
+          const v = grafica.victimas[ctx.dataIndex].toLocaleString("es-CO");
+          const p = grafica.porcentajes[ctx.dataIndex].toLocaleString("es-CO");
+          return " " + v + " víctimas (" + p + " %)";
+        };
+      }
+
+      // 1. Género: dona
+      new Chart(document.getElementById("graficaGenero"), {
+        type: "doughnut",
+        data: {
+          labels: datos.genero.etiquetas,
+          datasets: [{
+            data: datos.genero.victimas,
+            backgroundColor: colores(datos.genero.etiquetas, [NARANJA, AZUL]),
+            borderColor: "#ffffff",
+            borderWidth: 2
+          }]
+        },
+        options: {
+          cutout: "60%",
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: { callbacks: { label: textoTooltip(datos.genero) } }
+          }
+        }
+      });
+
+      // 2. Grupo etario: columnas
+      new Chart(document.getElementById("graficaEdad"), {
+        type: "bar",
+        data: {
+          labels: datos.edad.etiquetas,
+          datasets: [{
+            data: datos.edad.victimas,
+            backgroundColor: colores(datos.edad.etiquetas, [AZUL]),
+            borderRadius: 4,
+            maxBarThickness: 70
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: textoTooltip(datos.edad) } }
+          },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: "Víctimas" }, ticks: { callback: function (v) { return v.toLocaleString("es-CO"); } } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+
+      // 3. Arma o medio: barras horizontales
+      new Chart(document.getElementById("graficaArmas"), {
+        type: "bar",
+        data: {
+          labels: datos.armas.etiquetas,
+          datasets: [{
+            data: datos.armas.victimas,
+            backgroundColor: colores(datos.armas.etiquetas, [AZUL]),
+            borderRadius: 4,
+            maxBarThickness: 36
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: textoTooltip(datos.armas) } }
+          },
+          scales: {
+            x: { beginAtZero: true, title: { display: true, text: "Víctimas" }, ticks: { callback: function (v) { return v.toLocaleString("es-CO"); } } },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+    </script>
+  {% endif %}
 {% endblock %}
