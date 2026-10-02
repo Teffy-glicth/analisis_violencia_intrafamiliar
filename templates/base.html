@@ -15,11 +15,72 @@
     {% block head %}{% endblock %}
   </head>
   <body>
-    <nav class="navbar navbar-dark fixed-top site-navbar">
-      <div class="container">
-        <a class="navbar-brand fw-semibold" href="{{ url_for('index') }}">Inicio</a>
+    {% macro dimension_icon(endpoint) %}
+      <svg class="dimension-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        {% if endpoint == 'poblacional' %}
+          <circle cx="9" cy="8" r="3"/>
+          <path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M17 7a3 3 0 0 1 0 6m1.5 2a4.5 4.5 0 0 1 2 3.8V20"/>
+        {% elif endpoint == 'territorial' %}
+          <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/>
+          <circle cx="12" cy="10" r="2.2"/>
+        {% elif endpoint == 'temporal' %}
+          <circle cx="12" cy="12" r="8.5"/>
+          <path d="M12 7v5l3.5 2"/>
+        {% else %}
+          <circle cx="7" cy="8" r="2.5"/>
+          <circle cx="17" cy="8" r="2.5"/>
+          <circle cx="12" cy="17" r="2.5"/>
+          <path d="m9 9.5 2 5m4-5-2 5m-3.5-6h5"/>
+        {% endif %}
+      </svg>
+    {% endmacro %}
+    <header class="site-header sticky-top">
+      <div class="container site-navbar-inner">
+        <a class="header-home" href="{{ url_for('index') }}" aria-label="Ir al inicio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" focusable="false">
+              <path d="M5 25V8m0 17h22M10 21v-5h4v5m2 0V10h4v11m2 0v-8h4v8"/>
+              <circle cx="24" cy="8" r="3"/>
+            </svg>
+          </span>
+        </a>
+        <a class="header-title" href="{{ url_for('index') }}">
+          <span>Violencia intrafamiliar</span>
+          <span class="header-subtitle">Análisis en Colombia</span>
+        </a>
+        <div class="dropdown help-dropdown">
+          <button class="btn help-toggle dropdown-toggle" type="button" id="help-menu-button" data-bs-toggle="dropdown" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 21s-8-4.4-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.6-8 11-8 11Z"/>
+              <path d="M8.5 12h2l1.2-2.2 1.7 4.4 1.1-2.2h1"/>
+            </svg>
+            <span>Recibe ayuda</span>
+          </button>
+          <section class="dropdown-menu dropdown-menu-end help-menu" aria-labelledby="help-menu-button">
+            <p class="help-kicker mb-1">Recibe ayuda</p>
+            <h2 class="help-title">Pide ayuda hoy</h2>
+            <div class="help-line">
+              <span class="help-line-label">Línea 155</span>
+              <span class="help-line-name">SALVIA</span>
+            </div>
+            <dl class="help-details mb-0">
+              <div>
+                <dt>Para</dt>
+                <dd>Mayores de 18 años</dd>
+              </div>
+              <div>
+                <dt>Idiomas</dt>
+                <dd>Español</dd>
+              </div>
+              <div>
+                <dt>Horarios</dt>
+                <dd>Disponible las 24 horas</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
       </div>
-    </nav>
+    </header>
 
     <div class="site-layout">
       <main class="container page-content">
@@ -32,16 +93,16 @@
           <nav aria-label="Dimensiones de análisis">
             <ul class="nav nav-pills flex-column gap-1">
               <li class="nav-item">
-                <a class="nav-link{% if request.endpoint == 'poblacional' %} active{% endif %}" {% if request.endpoint == 'poblacional' %}aria-current="page"{% endif %} href="{{ url_for('poblacional') }}">Poblacional</a>
+                <a class="nav-link{% if request.endpoint == 'poblacional' %} active{% endif %}" {% if request.endpoint == 'poblacional' %}aria-current="page"{% endif %} href="{{ url_for('poblacional') }}">{{ dimension_icon('poblacional') }}<span>Poblacional</span></a>
               </li>
               <li class="nav-item">
-                <a class="nav-link{% if request.endpoint == 'territorial' %} active{% endif %}" {% if request.endpoint == 'territorial' %}aria-current="page"{% endif %} href="{{ url_for('territorial') }}">Territorial</a>
+                <a class="nav-link{% if request.endpoint == 'territorial' %} active{% endif %}" {% if request.endpoint == 'territorial' %}aria-current="page"{% endif %} href="{{ url_for('territorial') }}">{{ dimension_icon('territorial') }}<span>Territorial</span></a>
               </li>
               <li class="nav-item">
-                <a class="nav-link{% if request.endpoint == 'temporal' %} active{% endif %}" {% if request.endpoint == 'temporal' %}aria-current="page"{% endif %} href="{{ url_for('temporal') }}">Temporal</a>
+                <a class="nav-link{% if request.endpoint == 'temporal' %} active{% endif %}" {% if request.endpoint == 'temporal' %}aria-current="page"{% endif %} href="{{ url_for('temporal') }}">{{ dimension_icon('temporal') }}<span>Temporal</span></a>
               </li>
               <li class="nav-item">
-                <a class="nav-link{% if request.endpoint == 'multivariada' %} active{% endif %}" {% if request.endpoint == 'multivariada' %}aria-current="page"{% endif %} href="{{ url_for('multivariada') }}">Relacional y multivariada</a>
+                <a class="nav-link{% if request.endpoint == 'multivariada' %} active{% endif %}" {% if request.endpoint == 'multivariada' %}aria-current="page"{% endif %} href="{{ url_for('multivariada') }}">{{ dimension_icon('multivariada') }}<span>Relacional y multivariada</span></a>
               </li>
             </ul>
           </nav>

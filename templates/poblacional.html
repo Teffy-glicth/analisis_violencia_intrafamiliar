@@ -4,14 +4,6 @@
 
 {% block head %}
   <style>
-    .kpi {
-      border-left: 5px solid #0f6fb0;
-    }
-    .kpi .valor {
-      font-size: 2.1rem;
-      font-weight: 700;
-      line-height: 1.1;
-    }
     .caja-grafica {
       position: relative;
       height: 300px;
@@ -20,7 +12,7 @@
       height: 340px;
     }
     .interpretacion {
-      background: #f5f7f7;
+      background: #f0f5fa;
       border-radius: 0.5rem;
       padding: 0.85rem 1rem;
       margin-top: 1rem;
@@ -29,7 +21,7 @@
     }
     .tabla-conocimiento th {
       width: 9.5rem;
-      color: #0f6fb0;
+      color: var(--brand);
       font-weight: 600;
     }
   </style>
@@ -82,7 +74,7 @@
   <section class="mb-5">
     <h2 class="section-heading">Tablero</h2>
 
-    <form id="filtros" method="get" action="{{ url_for('poblacional') }}" class="card card-body shadow-sm mb-4">
+    <form id="filtros" method="get" action="{{ url_for('poblacional') }}" class="card card-body shadow-sm mb-4 filter-panel">
       <div class="row g-3 align-items-end">
         <div class="col-12 col-md-5">
           <label for="departamento" class="form-label fw-semibold">Departamento</label>
@@ -102,10 +94,10 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-12 col-md-3 d-flex gap-2">
+        <div class="col-12 col-md-3 d-flex gap-2 filter-actions">
           <button type="submit" class="btn btn-success">Aplicar</button>
           {% if depto_elegido or anio_elegido %}
-            <a href="{{ url_for('poblacional') }}" class="btn btn-outline-secondary">Limpiar</a>
+            <a href="{{ url_for('poblacional') }}" class="btn btn-outline-secondary clear-filter">Limpiar</a>
           {% endif %}
         </div>
       </div>
@@ -116,14 +108,14 @@
     {% else %}
       <div class="row g-3 mb-4">
         <div class="col-12 col-md-4">
-          <div class="card kpi shadow-sm h-100"><div class="card-body">
+          <div class="card kpi metric-card shadow-sm h-100"><div class="card-body">
             <p class="text-secondary mb-1">Total de víctimas</p>
             <p class="valor mb-1">{{ r.total }}</p>
             <p class="small text-secondary mb-0">en {{ r.registros }} registros</p>
           </div></div>
         </div>
         <div class="col-12 col-md-4">
-          <div class="card kpi shadow-sm h-100"><div class="card-body">
+          <div class="card kpi metric-card shadow-sm h-100"><div class="card-body">
             <p class="text-secondary mb-1">Mujeres víctimas</p>
             <p class="valor mb-1">{{ r.pct_mujeres }} %</p>
             <p class="small text-secondary mb-0">
@@ -132,7 +124,7 @@
           </div></div>
         </div>
         <div class="col-12 col-md-4">
-          <div class="card kpi shadow-sm h-100"><div class="card-body">
+          <div class="card kpi metric-card shadow-sm h-100"><div class="card-body">
             <p class="text-secondary mb-1">Grupo etario predominante</p>
             <p class="valor mb-1">{{ r.pct_grupo_predominante }} %</p>
             <p class="small text-secondary mb-0">{{ r.grupo_predominante }}: {{ r.victimas_grupo_predominante }} víctimas</p>
@@ -342,9 +334,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
       const datos = JSON.parse('{{ graficas | tojson | safe }}');
-      const AZUL = "#0f6fb0";
-      const NARANJA = "#c4561a";
-      const GRIS = "#b8c2c3";
+      const AZUL = "#3568cf";
+      const NARANJA = "#39b9dc";
+      const GRIS = "#aabac8";
 
       Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
       Chart.defaults.maintainAspectRatio = false;

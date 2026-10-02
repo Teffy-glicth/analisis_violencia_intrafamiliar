@@ -52,7 +52,7 @@
   <section class="mb-5" aria-labelledby="tablero-heading">
     <h2 id="tablero-heading" class="section-heading">Tablero de control</h2>
 
-    <div class="tp-card mb-4">
+    <div class="tp-card filter-panel mb-4">
       {# Formulario GET: al cambiar un filtro se recarga la página con ?anio=...&desde=...&hasta=... #}
       <form id="filtros-tp" class="tp-filters" method="get" action="{{ url_for('temporal') }}" aria-label="Filtros del tablero">
         <div>
@@ -72,7 +72,7 @@
         </div>
         <noscript><button type="submit" class="btn btn-outline-secondary">Aplicar</button></noscript>
         {% if filtros and (filtros.desde or filtros.hasta or filtros.granularidad == "trimestre") %}
-          <a class="btn btn-link" href="{{ url_for('temporal') }}">Quitar filtros</a>
+          <a class="btn btn-link clear-filter" href="{{ url_for('temporal') }}">Quitar filtros</a>
         {% endif %}
       </form>
       <p class="text-secondary small mt-3 mb-0">
@@ -84,7 +84,7 @@
 
     <div class="row g-4 mb-4">
       <div class="col-12 col-md-4">
-        <div class="tp-card">
+        <div class="tp-card metric-card">
           <p class="tp-kpi-label">Total de víctimas (filtro aplicado)</p>
           {% if indicadores %}
             <p id="kpi-total" class="tp-kpi-value">{{ entero(indicadores.victimas) }}</p>
@@ -95,7 +95,7 @@
         </div>
       </div>
       <div class="col-12 col-md-4">
-        <div class="tp-card">
+        <div class="tp-card metric-card">
           <p class="tp-kpi-label">Variación del último mes</p>
           {% if indicadores and indicadores.variacion_ultimo_mes is not none %}
             <p id="kpi-variacion" class="tp-kpi-value">{{ pct(indicadores.variacion_ultimo_mes) }}</p>
@@ -106,10 +106,10 @@
         </div>
       </div>
       <div class="col-12 col-md-4">
-        <div class="tp-card">
+        <div class="tp-card metric-card">
           <p class="tp-kpi-label">Mes pico / mes valle</p>
           {% if indicadores and indicadores.mes_pico and indicadores.mes_valle %}
-            <p id="kpi-pico" class="tp-kpi-value" style="font-size:1.4rem;">
+            <p id="kpi-pico" class="tp-kpi-value metric-value-compact">
               {{ indicadores.mes_pico.periodo }} ({{ entero(indicadores.mes_pico.victimas) }})
             </p>
             <p class="tp-kpi-note">
@@ -297,7 +297,7 @@
       // Los datos ya vienen calculados desde dimensiones/temporal.py; aquí solo se dibujan.
       const datosGraficas = JSON.parse(document.getElementById("datos-graficas").textContent);
 
-        const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
+        const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#1d3b52", size: 13 };
         const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
         const CONFIG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] };
 
@@ -315,14 +315,14 @@
           mode: esTrimestre ? undefined : "lines+markers",
           x: datosGraficas.periodo.labels,
           y: datosGraficas.periodo.valores,
-          line: esTrimestre ? undefined : { color: "#145b63", width: 3 },
-          marker: { color: "#145b63" },
+          line: esTrimestre ? undefined : { color: "#3568cf", width: 3 },
+          marker: { color: "#3568cf" },
           hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
         }], {
           ...BASE,
           margin: { l: 50, r: 20, t: 10, b: 40 },
-          xaxis: { automargin: true, gridcolor: "#e1e0d9" },
-          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
+          xaxis: { automargin: true, gridcolor: "#dbe5ee" },
+          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#dbe5ee", zeroline: false },
         }, CONFIG);
 
         // Visualización 2: variación porcentual mes a mes (siempre mensual,
@@ -332,13 +332,13 @@
           type: "bar",
           x: datosGraficas.variacion.labels,
           y: datosGraficas.variacion.valores,
-          marker: { color: datosGraficas.variacion.valores.map((v) => (v >= 0 ? "#1baf7a" : "#eb6834")) },
+          marker: { color: datosGraficas.variacion.valores.map((v) => (v >= 0 ? "#39b9dc" : "#d97742")) },
           hovertemplate: "%{x}<br>%{y:+.1f} % frente al mes anterior<extra></extra>",
         }], {
           ...BASE,
           margin: { l: 50, r: 20, t: 10, b: 40 },
           xaxis: { automargin: true },
-          yaxis: { automargin: true, title: { text: "Variación %", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: true, ticksuffix: " %" },
+          yaxis: { automargin: true, title: { text: "Variación %", standoff: 12 }, gridcolor: "#dbe5ee", zeroline: true, ticksuffix: " %" },
         }, CONFIG);
 
         // Visualización 3: comparación año contra año (mismos meses).
@@ -346,13 +346,13 @@
           type: "bar",
           x: datosGraficas.comparacion.anios.map(String),
           y: datosGraficas.comparacion.valores,
-          marker: { color: "#00482B" },
+          marker: { color: "#6689a2" },
           hovertemplate: "%{x}<br>%{y:,} víctimas<extra></extra>",
         }], {
           ...BASE,
           margin: { l: 50, r: 20, t: 10, b: 40 },
           xaxis: { automargin: true, type: "category" },
-          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false },
+          yaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#dbe5ee", zeroline: false },
         }, CONFIG);
     </script>
   {% endif %}

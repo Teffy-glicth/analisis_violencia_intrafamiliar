@@ -9,7 +9,7 @@
     .mv-card {
       height: 100%;
       padding: 1.5rem;
-      border: 1px solid #e0e9e7;
+      border: 1px solid #d8e3ed;
       border-radius: 1rem;
       background: var(--surface);
       box-shadow: 0 12px 32px rgb(24 51 59 / 5%);
@@ -64,7 +64,7 @@
       align-items: center;
       justify-content: center;
       min-height: 22rem;
-      border: 1px dashed #c9d3d1;
+      border: 1px dashed #bacbd9;
       border-radius: 0.75rem;
       color: var(--muted);
     }
@@ -78,7 +78,7 @@
       margin-top: 1rem;
       margin-bottom: 0;
       padding-top: 1rem;
-      border-top: 1px solid #e0e9e7;
+      border-top: 1px solid #d8e3ed;
     }
   </style>
 {% endblock %}
@@ -174,7 +174,7 @@
   <section class="mb-5" aria-labelledby="tablero-heading">
     <h2 id="tablero-heading" class="section-heading">Tablero de control</h2>
 
-    <div class="mv-card mb-4">
+    <div class="mv-card filter-panel mb-4">
       {# Formulario GET: al cambiar un filtro se recarga la página con ?departamento=...&anio=... #}
       <form id="filtros-mv" class="mv-filters" method="get" action="{{ url_for('multivariada') }}" aria-label="Filtros del tablero">
         <div>
@@ -201,14 +201,14 @@
         </div>
         <noscript><button type="submit" class="btn btn-outline-secondary">Aplicar</button></noscript>
         {% if filtros and (filtros.departamento or filtros.anio) %}
-          <a class="btn btn-link" href="{{ url_for('multivariada') }}">Quitar filtros</a>
+          <a class="btn btn-link clear-filter" href="{{ url_for('multivariada') }}">Quitar filtros</a>
         {% endif %}
       </form>
     </div>
 
     <div class="row g-4 mb-4">
       <div class="col-12 col-md-4">
-        <div class="mv-card">
+        <div class="mv-card metric-card">
           <p class="mv-kpi-label">Víctimas mujeres</p>
           {% if indicadores %}
             <p id="kpi-mujeres" class="mv-kpi-value">{{ pct(indicadores.pct_mujeres) }}</p>
@@ -221,7 +221,7 @@
         </div>
       </div>
       <div class="col-12 col-md-4">
-        <div class="mv-card">
+        <div class="mv-card metric-card">
           <p class="mv-kpi-label">Víctimas con arma o medio</p>
           {% if indicadores %}
             <p id="kpi-arma" class="mv-kpi-value">{{ pct(indicadores.pct_con_arma) }}</p>
@@ -234,7 +234,7 @@
         </div>
       </div>
       <div class="col-12 col-md-4">
-        <div class="mv-card">
+        <div class="mv-card metric-card">
           <p class="mv-kpi-label">Peso de la combinación principal</p>
           {% if indicadores %}
             <p id="kpi-combinacion" class="mv-kpi-value">{{ pct(indicadores.pct_combinacion_principal) }}</p>
@@ -482,12 +482,12 @@
           "SIN EMPLEO DE ARMAS": "Sin<br>armas",
         };
         const COLORES_ARMAS = {
-          "CONTUNDENTES": "#2a78d6",
-          "ARMA BLANCA / CORTOPUNZANTE": "#eb6834",
-          "ARMA DE FUEGO": "#1baf7a",
-          "SIN EMPLEO DE ARMAS": "#c9d3d1",
+          "CONTUNDENTES": "#3568cf",
+          "ARMA BLANCA / CORTOPUNZANTE": "#39b9dc",
+          "ARMA DE FUEGO": "#155e91",
+          "SIN EMPLEO DE ARMAS": "#aabac8",
         };
-        const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#00482B", size: 13 };
+        const FUENTE = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', color: "#1d3b52", size: 13 };
         const BASE = { font: FUENTE, separators: ",.", paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" };
         const CONFIG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] };
         const capitalizar = (texto) => texto.charAt(0) + texto.slice(1).toLowerCase();
@@ -508,13 +508,13 @@
           text: combinaciones.map((c) => pct(c.porcentaje)),
           textposition: "outside",
           cliponaxis: false,
-          marker: { color: "#145b63" },
+          marker: { color: "#3568cf" },
           customdata: combinaciones.map((c) => [c.etiqueta, pct(c.porcentaje)]),
           hovertemplate: "%{customdata[0]}<br>%{x:,} víctimas (%{customdata[1]})<extra></extra>",
         }], {
           ...BASE,
           margin: { l: 10, r: 60, t: 10, b: 40 },
-          xaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#e1e0d9", zeroline: false, ticklabelstandoff: 6 },
+          xaxis: { automargin: true, title: { text: "Víctimas", standoff: 12 }, gridcolor: "#dbe5ee", zeroline: false, ticklabelstandoff: 6 },
           yaxis: { automargin: true, ticklabelstandoff: 10 },
         }, CONFIG);
 
@@ -535,13 +535,13 @@
           hoverongaps: false,
           zmin: 40,
           zmax: 90,
-          colorscale: [[0, "#cde2fb"], [0.5, "#3987e5"], [1, "#104281"]],
+          colorscale: [[0, "#dceafb"], [0.5, "#5b8ee1"], [1, "#155e91"]],
           xgap: 2,
           ygap: 2,
           colorbar: { title: { text: "% mujeres", side: "right" }, ticksuffix: " %", thickness: 12 },
         }], {
           ...BASE,
-          plot_bgcolor: "#eef1f0",
+          plot_bgcolor: "#f0f5fa",
           margin: { l: 10, r: 10, t: 10, b: 10 },
           xaxis: { automargin: true, tickangle: 0, ticklabelstandoff: 8 },
           yaxis: { automargin: true, ticklabelstandoff: 10 },
@@ -566,7 +566,7 @@
           barmode: "stack",
           bargap: 0.2,
           margin: { l: 10, r: 10, t: 70, b: 40 },
-          xaxis: { automargin: true, range: [0, 100], ticksuffix: " %", gridcolor: "#e1e0d9", title: { text: "% de víctimas del departamento", standoff: 12 }, ticklabelstandoff: 6 },
+          xaxis: { automargin: true, range: [0, 100], ticksuffix: " %", gridcolor: "#dbe5ee", title: { text: "% de víctimas del departamento", standoff: 12 }, ticklabelstandoff: 6 },
           yaxis: {
             automargin: true,
             ticklabelstandoff: 10,
