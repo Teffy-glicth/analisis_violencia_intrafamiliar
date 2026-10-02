@@ -4,18 +4,16 @@
 
 {% block head %}
   <style>
-    .kpi { border-left: 5px solid #0f6fb0; }
-    .kpi .valor { font-size: 1.8rem; font-weight: 700; line-height: 1.15; }
     .caja-grafica { position: relative; height: 340px; }
     .caja-grafica.alta { height: 620px; }
     .interpretacion {
       margin: 1rem 0 0;
       padding: 0.85rem 1rem;
       border-radius: 0.5rem;
-      background: #f5f7f7;
+      background: #f0f5fa;
       font-size: 0.95rem;
     }
-    .tabla-conocimiento th { width: 9.5rem; color: #0f6fb0; font-weight: 600; }
+    .tabla-conocimiento th { width: 9.5rem; color: var(--brand); font-weight: 600; }
     @media (max-width: 575px) {
       .caja-grafica.alta { height: 760px; }
     }
@@ -74,21 +72,21 @@
     {% else %}
       <div class="row g-3 mb-4">
         <div class="col-12 col-md-4">
-          <div class="card kpi shadow-sm h-100"><div class="card-body">
+          <div class="card kpi metric-card shadow-sm h-100"><div class="card-body">
             <p class="text-secondary mb-1">Víctimas registradas</p>
             <p class="valor mb-1">{{ r.total }}</p>
             <p class="small text-secondary mb-0">en {{ r.registros }} registros</p>
           </div></div>
         </div>
         <div class="col-12 col-md-4">
-          <div class="card kpi shadow-sm h-100"><div class="card-body">
+          <div class="card kpi metric-card shadow-sm h-100"><div class="card-body">
             <p class="text-secondary mb-1">Municipios con registros</p>
             <p class="valor mb-1">{{ r.municipios }}</p>
             <p class="small text-secondary mb-0">{{ r.territorios_codificados }} códigos DANE</p>
           </div></div>
         </div>
         <div class="col-12 col-md-4">
-          <div class="card kpi shadow-sm h-100"><div class="card-body">
+          <div class="card kpi metric-card shadow-sm h-100"><div class="card-body">
             <p class="text-secondary mb-1">Municipio con más víctimas</p>
             <p class="valor mb-1">{{ r.pct_max }} %</p>
             <p class="small text-secondary mb-0">{{ r.municipio_max }}: {{ r.victimas_max }} víctimas</p>
@@ -149,7 +147,7 @@
 
     {% endif %}
 
-    <form id="filtros" method="get" action="{{ url_for('territorial') }}" class="card card-body border-primary shadow-sm mb-4">
+    <form id="filtros" method="get" action="{{ url_for('territorial') }}" class="card card-body shadow-sm mb-4 filter-panel">
       <div class="mb-3">
         <h3 class="h5 mb-1">Filtros de la distribución municipal</h3>
         <p class="small text-secondary mb-0">Elige un departamento, un año o ambos para actualizar los resultados y consultar la tabla completa.</p>
@@ -173,9 +171,9 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-12 col-md-3 d-flex gap-2">
+        <div class="col-12 col-md-3 d-flex gap-2 filter-actions">
           <button type="submit" class="btn btn-success">Aplicar</button>
-          <a href="{{ url_for('territorial') }}" class="btn btn-outline-secondary">Limpiar filtros</a>
+          <a href="{{ url_for('territorial') }}" class="btn btn-outline-secondary clear-filter">Limpiar filtros</a>
         </div>
       </div>
     </form>
@@ -354,9 +352,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
       const datos = {{ graficas | tojson }};
-      const AZUL = "#0f6fb0";
-      const NARANJA = "#c4561a";
-      const VERDE = "#37856a";
+      const AZUL = "#3568cf";
+      const NARANJA = "#39b9dc";
+      const VERDE = "#6689a2";
 
       Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
       Chart.defaults.maintainAspectRatio = false;
