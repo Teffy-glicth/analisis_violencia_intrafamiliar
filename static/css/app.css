@@ -18,17 +18,85 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+.site-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .site-navbar {
   background: var(--brand-dark);
   box-shadow: 0 2px 12px rgb(16 70 77 / 16%);
 }
 
-.site-navbar .navbar-collapse {
-  flex-basis: 100%;
+.site-layout > .page-content {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 3rem clamp(1rem, 4vw, 3rem);
 }
 
-.site-navbar .navbar-nav {
-  align-items: flex-start;
+.dimension-sidebar {
+  position: sticky;
+  top: 4.5rem;
+  display: flex;
+  flex: 0 0 12.75rem;
+  flex-direction: column;
+  align-self: flex-start;
+  width: 12.75rem;
+  height: calc(100vh - 4.5rem);
+  padding: 2rem 1rem;
+  overflow-y: auto;
+  border-left: 1px solid #e0e9e7;
+  background: var(--surface);
+}
+
+.dimension-sidebar-title {
+  margin: 0 0 1.5rem;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.dimension-sidebar nav {
+  display: flex;
+  min-height: 0;
+}
+
+.dimension-sidebar nav,
+.dimension-sidebar .nav {
+  flex: 1;
+}
+
+.dimension-sidebar .nav {
+  counter-reset: dimension;
+  height: 100%;
+  justify-content: space-evenly;
+}
+
+.dimension-sidebar .nav-item {
+  counter-increment: dimension;
+}
+
+.dimension-sidebar .nav-link {
+  color: var(--ink);
+}
+
+.dimension-sidebar .nav-link::before {
+  content: counter(dimension) ".";
+  display: inline-block;
+  min-width: 1.5rem;
+  font-weight: 700;
+}
+
+.dimension-sidebar .nav-link:hover {
+  background: #eef5f3;
+}
+
+.dimension-sidebar .nav-link.active {
+  background: var(--brand-dark);
+  font-weight: 700;
 }
 
 .navbar-brand {
@@ -216,4 +284,53 @@ body {
   background: var(--surface);
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+@media (max-width: 767.98px) {
+  .site-layout {
+    flex-direction: column;
+  }
+
+  .dimension-sidebar {
+    position: sticky;
+    z-index: 1020;
+    top: 4.5rem;
+    order: -1;
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    padding: 0.75rem 1rem;
+    border-right: 0;
+    border-bottom: 1px solid #e0e9e7;
+  }
+
+  .dimension-sidebar nav {
+    display: block;
+    flex: 0 0 auto;
+  }
+
+  .dimension-sidebar-title {
+    margin-bottom: 0.5rem;
+  }
+
+  .dimension-sidebar .nav {
+    flex: 0 0 auto;
+    flex-direction: row !important;
+    flex-wrap: nowrap;
+    height: auto;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .dimension-sidebar .nav-item {
+    flex: 0 0 auto;
+  }
+
+  .dimension-sidebar .nav-link {
+    white-space: nowrap;
+  }
+
+  .site-layout > .page-content {
+    padding-top: 2rem;
+  }
 }

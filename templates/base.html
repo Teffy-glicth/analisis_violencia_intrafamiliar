@@ -18,40 +18,36 @@
     <nav class="navbar navbar-dark fixed-top site-navbar">
       <div class="container">
         <a class="navbar-brand fw-semibold" href="{{ url_for('index') }}">Inicio</a>
-          <button
-            class="navbar-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#dimension-navigation"
-            aria-controls="dimension-navigation"
-            aria-expanded="false"
-            aria-label="Abrir menú de navegación"
-          >
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <div class="collapse navbar-collapse" id="dimension-navigation">
-            <ul class="navbar-nav ms-auto pt-2">
-              <li><hr class="dropdown-divider border-light opacity-25"></li>
-              <li class="nav-item">
-                <a class="nav-link{% if request.endpoint == 'poblacional' %} active{% endif %}" {% if request.endpoint == 'poblacional' %}aria-current="page"{% endif %} href="{{ url_for('poblacional') }}">Dimensión poblacional</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link{% if request.endpoint == 'territorial' %} active{% endif %}" {% if request.endpoint == 'territorial' %}aria-current="page"{% endif %} href="{{ url_for('territorial') }}">Dimensión territorial</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link{% if request.endpoint == 'temporal' %} active{% endif %}" {% if request.endpoint == 'temporal' %}aria-current="page"{% endif %} href="{{ url_for('temporal') }}">Dimensión temporal</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link{% if request.endpoint == 'multivariada' %} active{% endif %}" {% if request.endpoint == 'multivariada' %}aria-current="page"{% endif %} href="{{ url_for('multivariada') }}">Dimensión relacional y multivariada</a>
-              </li>
-            </ul>
-          </div>
       </div>
     </nav>
 
-    <main class="container page-content">
-      {% block content %}{% endblock %}
-    </main>
+    <div class="site-layout">
+      <main class="container page-content">
+        {% block content %}{% endblock %}
+      </main>
+
+      {% if request.endpoint != 'index' %}
+        <aside class="dimension-sidebar" aria-label="Navegación por dimensiones">
+          <h2 class="dimension-sidebar-title">Dimensiones</h2>
+          <nav aria-label="Dimensiones de análisis">
+            <ul class="nav nav-pills flex-column gap-1">
+              <li class="nav-item">
+                <a class="nav-link{% if request.endpoint == 'poblacional' %} active{% endif %}" {% if request.endpoint == 'poblacional' %}aria-current="page"{% endif %} href="{{ url_for('poblacional') }}">Poblacional</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{% if request.endpoint == 'territorial' %} active{% endif %}" {% if request.endpoint == 'territorial' %}aria-current="page"{% endif %} href="{{ url_for('territorial') }}">Territorial</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{% if request.endpoint == 'temporal' %} active{% endif %}" {% if request.endpoint == 'temporal' %}aria-current="page"{% endif %} href="{{ url_for('temporal') }}">Temporal</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{% if request.endpoint == 'multivariada' %} active{% endif %}" {% if request.endpoint == 'multivariada' %}aria-current="page"{% endif %} href="{{ url_for('multivariada') }}">Relacional y multivariada</a>
+              </li>
+            </ul>
+          </nav>
+        </aside>
+      {% endif %}
+    </div>
 
     <footer class="site-footer">
       <div class="container">
